@@ -144,6 +144,36 @@ body {
   opacity: 0.8;
 }
 
+/* ── Pull request badge ───────────────────────────── */
+.wt-pr {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.82em;
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 4px;
+}
+.wt-pr svg {
+  display: block;
+}
+.wt-pr:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
+}
+.wt-pr.pr-open {
+  color: var(--vscode-charts-orange, #d18616);
+}
+.wt-pr.pr-draft {
+  color: var(--vscode-charts-gray, #8c8c8c);
+}
+.wt-pr.pr-merged {
+  color: var(--vscode-charts-purple, #b180d7);
+}
+.wt-pr.pr-closed {
+  color: var(--vscode-charts-red, #f14c4c);
+}
+
 .wt-stat {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;

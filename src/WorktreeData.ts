@@ -5,6 +5,7 @@ import {
   getUncommittedDiffStat,
   resolveBaseBranch,
 } from "./git";
+import { GitHubService } from "./github";
 import type { Repo } from "./models/Repo";
 import type { DiffStat } from "./models/Worktree";
 
@@ -24,6 +25,8 @@ export class WorktreeData implements vscode.Disposable {
   private statInFlight = new Set<string>();
   /** Per-repo merged-branch info, keyed by repo root. */
   private mergedCache = new Map<string, Set<string>>();
+  private github = new GitHubService();
+  private prInFlight = new Set<string>();
   private fireTimer: ReturnType<typeof setTimeout> | undefined;
 
   /**
@@ -35,6 +38,7 @@ export class WorktreeData implements vscode.Disposable {
   async load(): Promise<Repo[]> {
     const repos = await discoverRepos();
     await Promise.all(repos.map((repo) => this.markMerged(repo)));
+    const prEnabled = this.prEnabled();
     for (const repo of repos) {
       for (const wt of repo.worktrees) {
         const cached = this.statCache.get(wt.path);
@@ -44,17 +48,56 @@ export class WorktreeData implements vscode.Disposable {
           this.scheduleStat(wt.path);
         }
       }
+      if (prEnabled) {
+        this.applyPullRequests(repo);
+      }
       repo.worktrees.sort(compareWorktrees);
     }
     return repos;
   }
 
-  /** Full reload: drop cached stats/merged info and notify. */
+  /** Full reload: drop cached stats/merged/PR info and notify. */
   refresh(): void {
     this.statCache.clear();
     this.statInFlight.clear();
     this.mergedCache.clear();
+    this.prInFlight.clear();
+    this.github.clear();
     this._onDidChange.fire();
+  }
+
+  private prEnabled(): boolean {
+    return vscode.workspace
+      .getConfiguration("worktreeNavigator")
+      .get<boolean>("showPullRequests", false);
+  }
+
+  /** Attach cached PR info to a repo's worktrees, scheduling a fetch if cold. */
+  private applyPullRequests(repo: Repo): void {
+    const map = this.github.peek(repo.root);
+    if (map) {
+      for (const wt of repo.worktrees) {
+        wt.pr = wt.branch ? map.get(wt.branch) : undefined;
+      }
+    } else {
+      this.schedulePr(repo.root);
+    }
+  }
+
+  /** Fetch PR data for a repo once (silent auth), then re-render on success. */
+  private schedulePr(repoRoot: string): void {
+    if (this.prInFlight.has(repoRoot)) {
+      return;
+    }
+    this.prInFlight.add(repoRoot);
+    void this.github
+      .getPrMap(repoRoot, { createIfNone: false })
+      .then((map) => {
+        this.prInFlight.delete(repoRoot);
+        if (map) {
+          this.scheduleFire();
+        }
+      });
   }
 
   /** Compute (cached) the merged-branch set for a repo and flag worktrees. */

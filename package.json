@@ -80,6 +80,12 @@
         "title": "Archive Worktree (remove + delete branch)",
         "category": "Worktrees",
         "icon": "$(archive)"
+      },
+      {
+        "command": "worktreeNavigator.signInGitHub",
+        "title": "Sign in to GitHub (for PR status)",
+        "category": "Worktrees",
+        "icon": "$(sign-in)"
       }
     ],
     "keybindings": [
@@ -105,6 +111,11 @@
           "command": "worktreeNavigator.switchMode",
           "when": "view == worktreeNavigator.worktrees || view == worktreeNavigator.pane",
           "group": "navigation@2"
+        },
+        {
+          "command": "worktreeNavigator.signInGitHub",
+          "when": "(view == worktreeNavigator.worktrees || view == worktreeNavigator.pane) && config.worktreeNavigator.showPullRequests",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -150,6 +161,11 @@
           "type": "string",
           "default": "",
           "description": "Base directory for new worktrees. When empty, new worktrees are created next to the repository (in its parent directory)."
+        },
+        "worktreeNavigator.showPullRequests": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show GitHub pull-request status on worktrees (open = orange, merged = purple, etc.). Requires signing in to GitHub; uses VS Code's built-in GitHub authentication."
         }
       }
     }

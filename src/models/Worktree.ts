@@ -23,4 +23,13 @@ export type Worktree = {
   diffStat?: DiffStat;
   /** True when this worktree's branch is fully merged into the base branch. */
   merged?: boolean;
+  /** Associated GitHub pull request, when PR status is enabled and found. */
+  pr?: PullRequestInfo;
+};
+
+export type PullRequestInfo = {
+  number: number;
+  state: "OPEN" | "MERGED" | "CLOSED";
+  isDraft: boolean;
+  url: string;
 };

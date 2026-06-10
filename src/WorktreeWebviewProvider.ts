@@ -22,6 +22,8 @@ interface WorktreeView {
   isMain: boolean;
   /** True when the branch is merged into the repo's base branch. */
   merged: boolean;
+  /** Associated GitHub PR, when enabled and found. */
+  pr?: { number: number; state: string; isDraft: boolean; url: string };
   insertions: number;
   deletions: number;
 }
@@ -32,6 +34,7 @@ type InboundMessage =
   | { type: "create"; repoRoot: string }
   | { type: "remove"; path: string }
   | { type: "archive"; path: string }
+  | { type: "openPr"; url: string }
   | { type: "refresh" }
   | { type: "ready" };
 
@@ -88,6 +91,9 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
             "worktreeNavigator.archiveWorktree",
             { path: msg.path },
           );
+          break;
+        case "openPr":
+          void vscode.env.openExternal(vscode.Uri.parse(msg.url));
           break;
         case "refresh":
           this.data.refresh();
@@ -168,6 +174,7 @@ function toRepoView(repo: Repo): RepoView {
       bare: wt.bare,
       isMain: normalizePath(wt.path) === normalizePath(repo.root),
       merged: !!wt.merged,
+      pr: wt.pr,
       insertions: wt.diffStat?.insertions ?? 0,
       deletions: wt.diffStat?.deletions ?? 0,
     })),

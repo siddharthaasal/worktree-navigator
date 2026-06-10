@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import type { WorktreeData } from "./WorktreeData";
 import type { Repo } from "./models/Repo";
-import type { Worktree } from "./models/Worktree";
+import type { PullRequestInfo, Worktree } from "./models/Worktree";
 import { formatDiffStat } from "./utils/formatDiffStat";
 import { worktreeLabel as label } from "./utils/worktreeLabel";
 
@@ -62,12 +62,20 @@ export class WorktreeItem extends vscode.TreeItem {
       worktree.path.replace(/[\\/]+$/, "") ===
       worktree.repoRoot.replace(/[\\/]+$/, "");
     const stat = formatDiffStat(worktree.diffStat);
-    this.description = worktree.merged
-      ? stat
-        ? `merged · ${stat}`
-        : "merged"
-      : stat;
-    this.tooltip = `${label(worktree)}\n${worktree.path}`;
+    const pr = worktree.pr;
+    const descParts = [
+      pr ? `#${pr.number}` : "",
+      worktree.merged ? "merged" : "",
+      stat,
+    ].filter(Boolean);
+    this.description = descParts.join(" · ");
+    this.tooltip = [
+      label(worktree),
+      worktree.path,
+      pr ? `PR #${pr.number} · ${prLabel(pr)}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
     this.resourceUri = vscode.Uri.file(worktree.path);
     this.contextValue = worktree.current
       ? "worktree-current"
@@ -76,13 +84,11 @@ export class WorktreeItem extends vscode.TreeItem {
         : worktree.merged
           ? "worktree-merged"
           : "worktree";
-    this.iconPath = new vscode.ThemeIcon(
-      worktree.current
-        ? "circle-filled"
-        : worktree.merged
-          ? "git-merge"
-          : "circle-outline",
-    );
+    this.iconPath = worktree.current
+      ? new vscode.ThemeIcon("circle-filled")
+      : pr
+        ? new vscode.ThemeIcon("git-pull-request", prColor(pr))
+        : new vscode.ThemeIcon(worktree.merged ? "git-merge" : "circle-outline");
 
     if (!worktree.current) {
       this.command = {
@@ -92,6 +98,26 @@ export class WorktreeItem extends vscode.TreeItem {
       };
     }
   }
+}
+
+/** Human label for a PR state. */
+function prLabel(pr: PullRequestInfo): string {
+  if (pr.state === "OPEN") {
+    return pr.isDraft ? "draft" : "open";
+  }
+  return pr.state.toLowerCase();
+}
+
+/** Theme color for a PR state — open is orange, merged purple, etc. */
+function prColor(pr: PullRequestInfo): vscode.ThemeColor {
+  if (pr.state === "MERGED") {
+    return new vscode.ThemeColor("charts.purple");
+  }
+  if (pr.state === "CLOSED") {
+    return new vscode.ThemeColor("charts.red");
+  }
+  // OPEN
+  return new vscode.ThemeColor(pr.isDraft ? "charts.gray" : "charts.orange");
 }
 
 /** Placeholder node (e.g. no repositories). */

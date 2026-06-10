@@ -18,6 +18,36 @@
   const ARCHIVE_SVG =
     '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
     '<rect x="2.5" y="3" width="11" height="3" rx="0.5"/><path d="M3.5 6v6.5h9V6M6.5 9h3"/></svg>';
+  const PR_SVG =
+    '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="4" cy="4" r="1.7"/><circle cx="4" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/>' +
+    '<path d="M4 5.7v4.6M12 10.3V7.5a2 2 0 0 0-2-2H7.5M9 4l-1.5 1.5L9 7"/></svg>';
+
+  function prClass(pr) {
+    if (pr.state === "MERGED") return "pr-merged";
+    if (pr.state === "CLOSED") return "pr-closed";
+    return pr.isDraft ? "pr-draft" : "pr-open";
+  }
+  function prTitle(pr) {
+    const s =
+      pr.state === "OPEN" ? (pr.isDraft ? "draft" : "open") : pr.state.toLowerCase();
+    return "PR #" + pr.number + " · " + s;
+  }
+  function prBadge(pr) {
+    const el = document.createElement("span");
+    el.className = "wt-pr " + prClass(pr);
+    el.title = prTitle(pr);
+    el.innerHTML = PR_SVG;
+    const num = document.createElement("span");
+    num.className = "pr-num";
+    num.textContent = "#" + pr.number;
+    el.appendChild(num);
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      vscode.postMessage({ type: "openPr", url: pr.url });
+    });
+    return el;
+  }
 
   function iconButton(svg, title, onClick) {
     const btn = document.createElement("button");
@@ -93,6 +123,8 @@
       text.appendChild(sub);
     }
     row.appendChild(text);
+
+    if (wt.pr) row.appendChild(prBadge(wt.pr));
 
     if (wt.merged) {
       const tag = document.createElement("span");

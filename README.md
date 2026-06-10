@@ -31,11 +31,28 @@ Two ways to render the same data (`worktreeNavigator.viewMode` setting):
 Switch between them from the view title's **Switch View** action. Open/close
 the sidebar pane with **`Cmd+Alt+W`** (mac) / **`Ctrl+Alt+W`** (win/linux).
 
-It is intentionally a visualization + switching layer — no worktree
-creation/deletion, no GitHub (PR/status), no agent features. See
-[plan-v0.md](plan-v0.md) (MVP), [plan-v1.md](plan-v1.md) (multi-repo grouping +
-diff stats), and [plan-v2.md](plan-v2.md) (webview pane + view modes) for scope
-and non-goals.
+### Actions
+
+- **Create worktree** — `+` on a repo header (pane) or repo context menu
+  (tree). Pick a new or existing branch, choose the location, optionally open
+  it. Base directory configurable via `worktreeNavigator.worktreesPath`.
+- **Remove worktree** — hover trash (pane) / context menu (tree). Guards the
+  current and main worktrees; offers force when the worktree is dirty.
+- **Merged detection** — worktrees whose branch is merged into the base branch
+  are dimmed and tagged `merged`, sorted to the bottom.
+- **Archive** — on a merged worktree, remove it and optionally delete its branch.
+
+### GitHub pull-request status (optional)
+
+Enable `worktreeNavigator.showPullRequests` and sign in via VS Code's built-in
+GitHub authentication. Each worktree then shows its PR: **open = orange**,
+draft = gray, **merged = purple**, closed = red, with the PR number; click it to
+open the PR. Read-only — the extension never modifies PRs. Repos without a
+GitHub `origin` simply show nothing.
+
+See [plan-v0.md](plan-v0.md) (MVP), [plan-v1.md](plan-v1.md) (multi-repo +
+diff stats), [plan-v2.md](plan-v2.md) (webview pane + modes), and
+[plan-v3.md](plan-v3.md) (actions + GitHub) for scope and design.
 
 ## Develop
 
@@ -54,13 +71,16 @@ repository that has worktrees and click the Worktrees icon.
 ```
 src/
 ├── extension.ts                  activation, commands, view-mode + keybinding wiring
-├── WorktreeData.ts               shared data source: discover + diff-stat cache + refresh
+├── WorktreeData.ts               shared data source: discover + diff/merged/PR cache + refresh
 ├── WorktreeProvider.ts           tree view — maps WorktreeData to tree items
 ├── WorktreeWebviewProvider.ts    pane view — webview shell + message passing
+├── actions.ts                    create / remove / archive worktree flows
+├── switch.ts                     switch-to-worktree (in-place folder swap)
 ├── repos.ts                      discover + dedup repositories (Git API + fallback)
-├── git.ts                        run git: worktree list, common-dir, diff stats
+├── git.ts                        run git: worktree list/add/remove, branches, merged, remote
+├── github.ts                     GitHub auth + GraphQL PR client (cached, read-only)
 ├── models/
-│   ├── Worktree.ts               Worktree + DiffStat types
+│   ├── Worktree.ts               Worktree + DiffStat + PullRequestInfo types
 │   └── Repo.ts                   Repo (project) type
 └── utils/
     ├── parseWorktreeOutput.ts    porcelain parser (pure, testable)

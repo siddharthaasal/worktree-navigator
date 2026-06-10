@@ -219,6 +219,12 @@ export async function deleteBranch(
   await gitStrict(repoRoot, ["branch", opts.force ? "-D" : "-d", branch]);
 }
 
+/** URL of the `origin` remote, or undefined if there is none. */
+export async function getOriginUrl(repoRoot: string): Promise<string | undefined> {
+  const out = await git(repoRoot, ["remote", "get-url", "origin"]);
+  return out?.trim() || undefined;
+}
+
 /** True if the worktree has any uncommitted changes (tracked or untracked). */
 export async function isWorktreeDirty(worktreePath: string): Promise<boolean> {
   const out = await git(worktreePath, ["status", "--porcelain"]);

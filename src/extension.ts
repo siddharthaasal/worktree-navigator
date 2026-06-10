@@ -72,12 +72,18 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       },
     ),
+    vscode.commands.registerCommand("worktreeNavigator.signInGitHub", () => {
+      void signInGitHub(data);
+    }),
     // Refresh when worktree metadata changes on disk (add/remove/HEAD move).
     createWorktreeWatcher(data),
     // Keep the context key in sync if the setting is edited directly.
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("worktreeNavigator.viewMode")) {
         syncViewModeContext();
+      }
+      if (e.affectsConfiguration("worktreeNavigator.showPullRequests")) {
+        data.refresh();
       }
     }),
   );
@@ -118,6 +124,22 @@ async function toggleViewMode(): Promise<void> {
     .getConfiguration("worktreeNavigator")
     .update("viewMode", next, vscode.ConfigurationTarget.Global);
   // onDidChangeConfiguration will re-sync the context key.
+}
+
+/** Trigger an interactive GitHub sign-in, then refresh so PR data loads. */
+async function signInGitHub(data: WorktreeData): Promise<void> {
+  try {
+    const session = await vscode.authentication.getSession("github", ["repo"], {
+      createIfNone: true,
+    });
+    if (session) {
+      data.refresh();
+    }
+  } catch (err) {
+    void vscode.window.showErrorMessage(
+      `GitHub sign-in failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 /** Resolve a repo root from a command argument (tree RepoItem or webview msg). */
