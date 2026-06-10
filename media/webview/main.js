@@ -3,6 +3,13 @@
   const vscode = acquireVsCodeApi();
   const root = document.getElementById("root");
 
+  // Static, self-authored SVG markup (no user data) — safe to assign as HTML.
+  const BRANCH_SVG =
+    '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">' +
+    '<circle cx="4.5" cy="3.3" r="1.7"/><circle cx="4.5" cy="12.7" r="1.7"/>' +
+    '<circle cx="11.5" cy="5.6" r="1.7"/><path d="M4.5 5v6"/>' +
+    '<path d="M4.5 8.5h3.5a3 3 0 0 0 3-3"/></svg>';
+
   /** @type {{ collapsed: string[] }} */
   const state = vscode.getState() || { collapsed: [] };
   const collapsed = new Set(state.collapsed);
@@ -43,14 +50,25 @@
     row.className = "worktree" + (wt.current ? " current" : "");
     row.title = wt.path;
 
-    const dot = document.createElement("span");
-    dot.className = "wt-dot";
-    row.appendChild(dot);
+    const icon = document.createElement("span");
+    icon.className = "wt-icon";
+    icon.innerHTML = BRANCH_SVG;
+    row.appendChild(icon);
 
+    const text = document.createElement("span");
+    text.className = "wt-text";
     const label = document.createElement("span");
     label.className = "wt-label";
     label.textContent = wt.label;
-    row.appendChild(label);
+    text.appendChild(label);
+    // Dimmed subtitle: the worktree folder name, when it adds information.
+    if (wt.dir && wt.dir !== wt.label) {
+      const sub = document.createElement("span");
+      sub.className = "wt-sub";
+      sub.textContent = wt.dir;
+      text.appendChild(sub);
+    }
+    row.appendChild(text);
 
     const stat = statEl(wt.insertions, wt.deletions);
     if (stat) row.appendChild(stat);
@@ -73,13 +91,13 @@
     header.title = repo.root;
 
     const twisty = document.createElement("span");
-    twisty.className = "repo-twisty codicon";
+    twisty.className = "repo-twisty";
     twisty.textContent = "▾";
     header.appendChild(twisty);
 
     const badge = document.createElement("span");
     badge.className = "repo-badge";
-    badge.textContent = (repo.name[0] || "?");
+    badge.textContent = repo.name[0] || "?";
     header.appendChild(badge);
 
     const name = document.createElement("span");

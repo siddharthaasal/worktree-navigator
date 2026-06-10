@@ -166,3 +166,29 @@ panel. The pane is a richer renderer of the **same** worktree data.
 - **Q2 — Keybinding:** ✅ `cmd+alt+w` / `ctrl+alt+w`.
 - **Q3 — Extras:** ✅ **strict parity for v2** — branch name + colored diff pill
   + active highlight only. Ahead/behind and commit subtitle deferred.
+
+---
+
+## v2.1 — Switch behavior fix + UI polish
+
+**Bug:** clicking a worktree ran `vscode.openFolder(path, false)`, which
+*replaced the entire workspace* with that single folder — wiping a multi-repo
+workspace (e.g. canvas + foundation) down to one worktree, with a reload.
+
+**Fix — swap the repo's folder in place** (`switchToWorktree`):
+- Identify the workspace folder belonging to the same repository as the target
+  by matching **git common-dir**, and replace just that folder via
+  `updateWorkspaceFolders(idx, 1, { uri })`. Other repos stay; no full reload.
+- If no open folder belongs to that repo (repo nested under an opened parent),
+  **add** the worktree as an extra folder rather than wiping the workspace.
+- With no folders open at all, fall back to `openFolder`.
+- Both the tree command and the webview `switch` message route through this one
+  function.
+
+**UI polish (pane):**
+- Stronger **active row** — highlighted background + left **accent bar**.
+- **git-branch icons** (inline SVG) replace the plain dots; current row tinted
+  with the accent color.
+- **Cleaner spacing** — group separation, row padding, right-aligned pills.
+- **Dimmed subtitle** — the worktree folder name under the branch label when it
+  adds information (Superset-style).

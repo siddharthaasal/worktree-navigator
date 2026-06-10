@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "node:path";
 import { randomBytes } from "node:crypto";
 import type { WorktreeData } from "./WorktreeData";
 import type { Repo } from "./models/Repo";
@@ -13,6 +14,8 @@ interface RepoView {
 interface WorktreeView {
   path: string;
   label: string;
+  /** Worktree folder basename, shown as a dimmed subtitle when it differs. */
+  dir: string;
   current: boolean;
   bare: boolean;
   insertions: number;
@@ -38,6 +41,7 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly data: WorktreeData,
+    private readonly onSwitch: (path: string) => void | Promise<void>,
   ) {
     this.data.onDidChange(() => void this.render());
   }
@@ -58,11 +62,7 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
     view.webview.onDidReceiveMessage((msg: InboundMessage) => {
       switch (msg.type) {
         case "switch":
-          vscode.commands.executeCommand(
-            "vscode.openFolder",
-            vscode.Uri.file(msg.path),
-            false, // reuse window
-          );
+          void Promise.resolve(this.onSwitch(msg.path));
           break;
         case "refresh":
           this.data.refresh();
@@ -134,6 +134,7 @@ function toRepoView(repo: Repo): RepoView {
     worktrees: repo.worktrees.map((wt) => ({
       path: wt.path,
       label: worktreeLabel(wt),
+      dir: path.basename(wt.path),
       current: wt.current,
       bare: wt.bare,
       insertions: wt.diffStat?.insertions ?? 0,
