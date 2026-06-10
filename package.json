@@ -26,9 +26,17 @@
     "views": {
       "worktreeNavigator": [
         {
+          "id": "worktreeNavigator.pane",
+          "type": "webview",
+          "name": "Worktrees",
+          "icon": "media/worktrees.svg",
+          "when": "worktreeNavigator.viewMode == 'pane'"
+        },
+        {
           "id": "worktreeNavigator.worktrees",
           "name": "Worktrees",
-          "icon": "media/worktrees.svg"
+          "icon": "media/worktrees.svg",
+          "when": "worktreeNavigator.viewMode == 'tree'"
         }
       ]
     },
@@ -36,21 +44,61 @@
       {
         "command": "worktreeNavigator.refresh",
         "title": "Refresh Worktrees",
+        "category": "Worktrees",
         "icon": "$(refresh)"
       },
       {
         "command": "worktreeNavigator.switch",
-        "title": "Switch to Worktree"
+        "title": "Switch to Worktree",
+        "category": "Worktrees"
+      },
+      {
+        "command": "worktreeNavigator.switchMode",
+        "title": "Switch View (Tree / Pane)",
+        "category": "Worktrees",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "worktreeNavigator.togglePane",
+        "title": "Toggle Worktrees Pane",
+        "category": "Worktrees"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "worktreeNavigator.togglePane",
+        "key": "ctrl+alt+w",
+        "mac": "cmd+alt+w"
       }
     ],
     "menus": {
       "view/title": [
         {
           "command": "worktreeNavigator.refresh",
-          "when": "view == worktreeNavigator.worktrees",
-          "group": "navigation"
+          "when": "view == worktreeNavigator.worktrees || view == worktreeNavigator.pane",
+          "group": "navigation@1"
+        },
+        {
+          "command": "worktreeNavigator.switchMode",
+          "when": "view == worktreeNavigator.worktrees || view == worktreeNavigator.pane",
+          "group": "navigation@2"
         }
       ]
+    },
+    "configuration": {
+      "title": "Worktree Navigator",
+      "properties": {
+        "worktreeNavigator.viewMode": {
+          "type": "string",
+          "enum": ["pane", "tree"],
+          "enumDescriptions": [
+            "Rich webview pane (highlighted active row, colored diff pills).",
+            "Lightweight native tree list."
+          ],
+          "default": "pane",
+          "description": "Which Worktrees view to show in the sidebar."
+        }
+      }
     }
   },
   "scripts": {

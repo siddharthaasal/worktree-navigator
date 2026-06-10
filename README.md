@@ -20,10 +20,22 @@ worktrees from a sidebar.
   everything; the tree also auto-refreshes when repos open/close or worktree
   metadata changes.
 
+### View modes
+
+Two ways to render the same data (`worktreeNavigator.viewMode` setting):
+
+- **Pane** *(default)* — a rich webview in the left sidebar with a highlighted
+  active row and colored `+N -N` diff pills (Conductor/Superset-style).
+- **Tree** — the lightweight native tree list.
+
+Switch between them from the view title's **Switch View** action. Open/close
+the sidebar pane with **`Cmd+Alt+W`** (mac) / **`Ctrl+Alt+W`** (win/linux).
+
 It is intentionally a visualization + switching layer — no worktree
-creation/deletion, no agent/PR/Git features. See [plan-v0.md](plan-v0.md) (MVP)
-and [plan-v1.md](plan-v1.md) (multi-repo grouping + diff stats) for scope and
-non-goals.
+creation/deletion, no GitHub (PR/status), no agent features. See
+[plan-v0.md](plan-v0.md) (MVP), [plan-v1.md](plan-v1.md) (multi-repo grouping +
+diff stats), and [plan-v2.md](plan-v2.md) (webview pane + view modes) for scope
+and non-goals.
 
 ## Develop
 
@@ -41,8 +53,10 @@ repository that has worktrees and click the Worktrees icon.
 
 ```
 src/
-├── extension.ts                  activation, commands, tree + watcher registration
-├── WorktreeProvider.ts           TreeDataProvider — repo → worktree, async stat fill
+├── extension.ts                  activation, commands, view-mode + keybinding wiring
+├── WorktreeData.ts               shared data source: discover + diff-stat cache + refresh
+├── WorktreeProvider.ts           tree view — maps WorktreeData to tree items
+├── WorktreeWebviewProvider.ts    pane view — webview shell + message passing
 ├── repos.ts                      discover + dedup repositories (Git API + fallback)
 ├── git.ts                        run git: worktree list, common-dir, diff stats
 ├── models/
@@ -50,5 +64,11 @@ src/
 │   └── Repo.ts                   Repo (project) type
 └── utils/
     ├── parseWorktreeOutput.ts    porcelain parser (pure, testable)
-    └── formatDiffStat.ts         parse --shortstat, format "+1.3k -25"
+    ├── formatDiffStat.ts         parse --shortstat, format "+1.3k -25"
+    └── worktreeLabel.ts          shared branch/dir label logic
+
+media/webview/                    pane UI: main.css (themed), main.js (renderer)
 ```
+
+Both views share `WorktreeData`, so the tree and pane never drift in caching or
+refresh behavior.

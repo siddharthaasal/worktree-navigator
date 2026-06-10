@@ -1,24 +1,51 @@
 import * as vscode from "vscode";
+import { WorktreeData } from "./WorktreeData";
 import { WorktreeProvider, WorktreeItem } from "./WorktreeProvider";
+import { WorktreeWebviewProvider } from "./WorktreeWebviewProvider";
 import { getGitAPI } from "./repos";
 
+type ViewMode = "tree" | "pane";
+
 export function activate(context: vscode.ExtensionContext): void {
-  const provider = new WorktreeProvider();
+  const data = new WorktreeData();
+  context.subscriptions.push(data);
+
+  const treeProvider = new WorktreeProvider(data);
+  const webviewProvider = new WorktreeWebviewProvider(context.extensionUri, data);
+
+  syncViewModeContext();
+
+  const treeView = vscode.window.createTreeView("worktreeNavigator.worktrees", {
+    treeDataProvider: treeProvider,
+  });
 
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider(
-      "worktreeNavigator.worktrees",
-      provider,
+    treeView,
+    vscode.window.registerWebviewViewProvider(
+      WorktreeWebviewProvider.viewId,
+      webviewProvider,
     ),
     vscode.commands.registerCommand("worktreeNavigator.refresh", () => {
-      provider.refresh();
+      data.refresh();
     }),
     vscode.commands.registerCommand(
       "worktreeNavigator.switch",
       (item?: WorktreeItem) => switchWorktree(item),
     ),
+    vscode.commands.registerCommand("worktreeNavigator.switchMode", () => {
+      void toggleViewMode();
+    }),
+    vscode.commands.registerCommand("worktreeNavigator.togglePane", () => {
+      void togglePane(() => treeView.visible || webviewProvider.isVisible());
+    }),
     // Refresh when worktree metadata changes on disk (add/remove/HEAD move).
-    createWorktreeWatcher(provider),
+    createWorktreeWatcher(data),
+    // Keep the context key in sync if the setting is edited directly.
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("worktreeNavigator.viewMode")) {
+        syncViewModeContext();
+      }
+    }),
   );
 
   // Refresh when repositories are opened/closed in the workspace.
@@ -27,13 +54,37 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
     context.subscriptions.push(
-      api.onDidOpenRepository(() => provider.refresh()),
-      api.onDidCloseRepository(() => provider.refresh()),
+      api.onDidOpenRepository(() => data.refresh()),
+      api.onDidCloseRepository(() => data.refresh()),
     );
   });
 }
 
 export function deactivate(): void {}
+
+function getViewMode(): ViewMode {
+  const mode = vscode.workspace
+    .getConfiguration("worktreeNavigator")
+    .get<ViewMode>("viewMode", "pane");
+  return mode === "tree" ? "tree" : "pane";
+}
+
+/** Mirror the viewMode setting into a context key the views' `when` clauses read. */
+function syncViewModeContext(): void {
+  void vscode.commands.executeCommand(
+    "setContext",
+    "worktreeNavigator.viewMode",
+    getViewMode(),
+  );
+}
+
+async function toggleViewMode(): Promise<void> {
+  const next: ViewMode = getViewMode() === "pane" ? "tree" : "pane";
+  await vscode.workspace
+    .getConfiguration("worktreeNavigator")
+    .update("viewMode", next, vscode.ConfigurationTarget.Global);
+  // onDidChangeConfiguration will re-sync the context key.
+}
 
 function switchWorktree(item?: WorktreeItem): void {
   if (!item || item.worktree.current) {
@@ -47,12 +98,29 @@ function switchWorktree(item?: WorktreeItem): void {
   );
 }
 
+/**
+ * Open the Worktrees view if it isn't showing, otherwise hide the sidebar —
+ * the keyboard-shortcut open/close behavior. `isVisible` reports the real
+ * visibility of whichever view (tree or pane) is active.
+ */
+async function togglePane(isVisible: () => boolean): Promise<void> {
+  if (isVisible()) {
+    await vscode.commands.executeCommand(
+      "workbench.action.toggleSidebarVisibility",
+    );
+  } else {
+    await vscode.commands.executeCommand(
+      "workbench.view.extension.worktreeNavigator",
+    );
+  }
+}
+
 /** Watch repo worktree metadata and refresh the tree on changes. */
-function createWorktreeWatcher(provider: WorktreeProvider): vscode.Disposable {
+function createWorktreeWatcher(data: WorktreeData): vscode.Disposable {
   const watcher = vscode.workspace.createFileSystemWatcher(
     "**/.git/worktrees/**",
   );
-  const refresh = () => provider.refresh();
+  const refresh = () => data.refresh();
   watcher.onDidCreate(refresh);
   watcher.onDidChange(refresh);
   watcher.onDidDelete(refresh);

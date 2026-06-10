@@ -1,0 +1,143 @@
+import * as vscode from "vscode";
+import { randomBytes } from "node:crypto";
+import type { WorktreeData } from "./WorktreeData";
+import type { Repo } from "./models/Repo";
+import { worktreeLabel } from "./utils/worktreeLabel";
+
+/** Serializable view model posted to the webview. */
+interface RepoView {
+  root: string;
+  name: string;
+  worktrees: WorktreeView[];
+}
+interface WorktreeView {
+  path: string;
+  label: string;
+  current: boolean;
+  bare: boolean;
+  insertions: number;
+  deletions: number;
+}
+
+/** Messages received from the webview. */
+type InboundMessage =
+  | { type: "switch"; path: string }
+  | { type: "refresh" }
+  | { type: "ready" };
+
+/**
+ * Renders the worktree list as a rich webview in the sidebar — the "pane" mode.
+ * Shares all data with the tree view through `WorktreeData`; this class only
+ * owns the HTML shell and message passing.
+ */
+export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
+  static readonly viewId = "worktreeNavigator.pane";
+
+  private view?: vscode.WebviewView;
+
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly data: WorktreeData,
+  ) {
+    this.data.onDidChange(() => void this.render());
+  }
+
+  /** Whether the pane is currently visible in the sidebar. */
+  isVisible(): boolean {
+    return this.view?.visible ?? false;
+  }
+
+  resolveWebviewView(view: vscode.WebviewView): void {
+    this.view = view;
+    view.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this.mediaRoot()],
+    };
+    view.webview.html = this.html(view.webview);
+
+    view.webview.onDidReceiveMessage((msg: InboundMessage) => {
+      switch (msg.type) {
+        case "switch":
+          vscode.commands.executeCommand(
+            "vscode.openFolder",
+            vscode.Uri.file(msg.path),
+            false, // reuse window
+          );
+          break;
+        case "refresh":
+          this.data.refresh();
+          break;
+        case "ready":
+          void this.render();
+          break;
+      }
+    });
+
+    // Re-push data whenever the view becomes visible again.
+    view.onDidChangeVisibility(() => {
+      if (view.visible) {
+        void this.render();
+      }
+    });
+
+    void this.render();
+  }
+
+  /** Push the current repo/worktree data to the webview. */
+  private async render(): Promise<void> {
+    if (!this.view) {
+      return;
+    }
+    const repos = await this.data.load();
+    await this.view.webview.postMessage({
+      type: "render",
+      repos: repos.map(toRepoView),
+    });
+  }
+
+  private mediaRoot(): vscode.Uri {
+    return vscode.Uri.joinPath(this.extensionUri, "media", "webview");
+  }
+
+  private html(webview: vscode.Webview): string {
+    const nonce = randomBytes(16).toString("base64");
+    const asset = (name: string) =>
+      webview.asWebviewUri(vscode.Uri.joinPath(this.mediaRoot(), name));
+    const csp = [
+      `default-src 'none'`,
+      `style-src ${webview.cspSource}`,
+      `script-src 'nonce-${nonce}'`,
+      `img-src ${webview.cspSource}`,
+    ].join("; ");
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="${csp}" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="${asset("main.css")}" />
+  <title>Worktrees</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script nonce="${nonce}" src="${asset("main.js")}"></script>
+</body>
+</html>`;
+  }
+}
+
+function toRepoView(repo: Repo): RepoView {
+  return {
+    root: repo.root,
+    name: repo.name,
+    worktrees: repo.worktrees.map((wt) => ({
+      path: wt.path,
+      label: worktreeLabel(wt),
+      current: wt.current,
+      bare: wt.bare,
+      insertions: wt.diffStat?.insertions ?? 0,
+      deletions: wt.diffStat?.deletions ?? 0,
+    })),
+  };
+}
