@@ -1,3 +1,8 @@
+export type DiffStat = {
+  insertions: number;
+  deletions: number;
+};
+
 export type Worktree = {
   /** Absolute path to the worktree directory. */
   path: string;
@@ -9,4 +14,11 @@ export type Worktree = {
   detached: boolean;
   /** True for the bare repository entry, if any. */
   bare: boolean;
+  /** Root of the repository (common-dir group) this worktree belongs to. */
+  repoRoot: string;
+  /**
+   * Uncommitted working-tree diff stat. Filled in asynchronously after the
+   * tree first renders; stays undefined for a clean tree or until computed.
+   */
+  diffStat?: DiffStat;
 };

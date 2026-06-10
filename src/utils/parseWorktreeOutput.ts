@@ -1,5 +1,8 @@
 import type { Worktree } from "../models/Worktree";
 
+/** Worktree fields known from parsing alone — `repoRoot` is stamped later. */
+export type ParsedWorktree = Omit<Worktree, "repoRoot">;
+
 /**
  * Parse the output of `git worktree list --porcelain` into Worktree records.
  *
@@ -20,9 +23,9 @@ import type { Worktree } from "../models/Worktree";
  * `current` is left false here — the caller determines which worktree maps to
  * the active window, since that is not part of the git output.
  */
-export function parseWorktreeOutput(output: string): Worktree[] {
-  const worktrees: Worktree[] = [];
-  let current: Partial<Worktree> | null = null;
+export function parseWorktreeOutput(output: string): ParsedWorktree[] {
+  const worktrees: ParsedWorktree[] = [];
+  let current: Partial<ParsedWorktree> | null = null;
 
   const flush = () => {
     if (current && current.path) {
