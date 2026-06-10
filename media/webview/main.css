@@ -127,6 +127,23 @@ body {
   white-space: nowrap;
 }
 
+.worktree.merged .wt-label,
+.worktree.merged .wt-icon {
+  opacity: 0.55;
+}
+.worktree.merged .wt-icon {
+  color: var(--vscode-gitDecoration-ignoredResourceForeground, #8c8c8c);
+}
+.wt-tag {
+  flex: 0 0 auto;
+  font-size: 0.78em;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  opacity: 0.8;
+}
+
 .wt-stat {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;

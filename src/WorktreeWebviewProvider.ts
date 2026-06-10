@@ -20,6 +20,8 @@ interface WorktreeView {
   bare: boolean;
   /** True for the repository's main worktree (cannot be removed). */
   isMain: boolean;
+  /** True when the branch is merged into the repo's base branch. */
+  merged: boolean;
   insertions: number;
   deletions: number;
 }
@@ -29,6 +31,7 @@ type InboundMessage =
   | { type: "switch"; path: string }
   | { type: "create"; repoRoot: string }
   | { type: "remove"; path: string }
+  | { type: "archive"; path: string }
   | { type: "refresh" }
   | { type: "ready" };
 
@@ -77,6 +80,12 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
         case "remove":
           void vscode.commands.executeCommand(
             "worktreeNavigator.removeWorktree",
+            { path: msg.path },
+          );
+          break;
+        case "archive":
+          void vscode.commands.executeCommand(
+            "worktreeNavigator.archiveWorktree",
             { path: msg.path },
           );
           break;
@@ -158,6 +167,7 @@ function toRepoView(repo: Repo): RepoView {
       current: wt.current,
       bare: wt.bare,
       isMain: normalizePath(wt.path) === normalizePath(repo.root),
+      merged: !!wt.merged,
       insertions: wt.diffStat?.insertions ?? 0,
       deletions: wt.diffStat?.deletions ?? 0,
     })),

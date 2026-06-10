@@ -74,6 +74,12 @@
         "title": "Remove Worktree",
         "category": "Worktrees",
         "icon": "$(trash)"
+      },
+      {
+        "command": "worktreeNavigator.archiveWorktree",
+        "title": "Archive Worktree (remove + delete branch)",
+        "category": "Worktrees",
+        "icon": "$(archive)"
       }
     ],
     "keybindings": [
@@ -108,13 +114,22 @@
           "group": "inline"
         },
         {
-          "command": "worktreeNavigator.removeWorktree",
-          "when": "view == worktreeNavigator.worktrees && viewItem == worktree",
-          "group": "inline"
+          "command": "worktreeNavigator.archiveWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem == worktree-merged",
+          "group": "inline@1"
         },
         {
           "command": "worktreeNavigator.removeWorktree",
-          "when": "view == worktreeNavigator.worktrees && viewItem == worktree"
+          "when": "view == worktreeNavigator.worktrees && viewItem =~ /^worktree(-merged)?$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "worktreeNavigator.removeWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem =~ /^worktree(-merged)?$/"
+        },
+        {
+          "command": "worktreeNavigator.archiveWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem == worktree-merged"
         }
       ]
     },

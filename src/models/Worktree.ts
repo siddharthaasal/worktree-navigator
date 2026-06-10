@@ -21,4 +21,6 @@ export type Worktree = {
    * tree first renders; stays undefined for a clean tree or until computed.
    */
   diffStat?: DiffStat;
+  /** True when this worktree's branch is fully merged into the base branch. */
+  merged?: boolean;
 };

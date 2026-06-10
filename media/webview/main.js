@@ -15,6 +15,9 @@
   const TRASH_SVG =
     '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
     '<path d="M3 4.5h10M6 4.5V3h4v1.5M5 4.5l.6 8h4.8l.6-8"/></svg>';
+  const ARCHIVE_SVG =
+    '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect x="2.5" y="3" width="11" height="3" rx="0.5"/><path d="M3.5 6v6.5h9V6M6.5 9h3"/></svg>';
 
   function iconButton(svg, title, onClick) {
     const btn = document.createElement("button");
@@ -67,7 +70,8 @@
 
   function worktreeRow(wt) {
     const row = document.createElement("div");
-    row.className = "worktree" + (wt.current ? " current" : "");
+    row.className =
+      "worktree" + (wt.current ? " current" : "") + (wt.merged ? " merged" : "");
     row.title = wt.path;
 
     const icon = document.createElement("span");
@@ -90,11 +94,25 @@
     }
     row.appendChild(text);
 
+    if (wt.merged) {
+      const tag = document.createElement("span");
+      tag.className = "wt-tag";
+      tag.textContent = "merged";
+      row.appendChild(tag);
+    }
+
     const stat = statEl(wt.insertions, wt.deletions);
     if (stat) row.appendChild(stat);
 
-    // Remove action (hover) — never for the current or main worktree.
+    // Hover actions — never for the current or main worktree.
     if (!wt.current && !wt.isMain) {
+      if (wt.merged) {
+        row.appendChild(
+          iconButton(ARCHIVE_SVG, "Archive worktree (remove + delete branch)", () => {
+            vscode.postMessage({ type: "archive", path: wt.path });
+          }),
+        );
+      }
       row.appendChild(
         iconButton(TRASH_SVG, "Remove worktree", () => {
           vscode.postMessage({ type: "remove", path: wt.path });

@@ -63,6 +63,15 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       },
     ),
+    vscode.commands.registerCommand(
+      "worktreeNavigator.archiveWorktree",
+      (arg?: WorktreeItem | { path?: string }) => {
+        const p = pathOf(arg);
+        if (p) {
+          void removeWorktreeAction(data, p, { archive: true });
+        }
+      },
+    ),
     // Refresh when worktree metadata changes on disk (add/remove/HEAD move).
     createWorktreeWatcher(data),
     // Keep the context key in sync if the setting is edited directly.

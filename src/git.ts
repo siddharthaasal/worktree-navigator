@@ -225,6 +225,44 @@ export async function isWorktreeDirty(worktreePath: string): Promise<boolean> {
   return !!out && out.trim().length > 0;
 }
 
+/**
+ * Resolve a repository's base branch: the default branch from
+ * `origin/HEAD`, falling back to `main`, `master`, then the first local branch.
+ */
+export async function resolveBaseBranch(
+  repoRoot: string,
+): Promise<string | undefined> {
+  const sym = await git(repoRoot, [
+    "symbolic-ref",
+    "--quiet",
+    "refs/remotes/origin/HEAD",
+  ]);
+  if (sym) {
+    return sym.trim().replace(/^refs\/remotes\/origin\//, "");
+  }
+  const { local } = await listBranches(repoRoot);
+  return (
+    ["main", "master"].find((b) => local.includes(b)) ?? local[0] ?? undefined
+  );
+}
+
+/**
+ * Branch names that are fully merged into `base` (excluding `base` itself).
+ */
+export async function getMergedBranches(
+  repoRoot: string,
+  base: string,
+): Promise<Set<string>> {
+  const out = await git(repoRoot, [
+    "branch",
+    "--merged",
+    base,
+    "--format=%(refname:short)",
+  ]);
+  const merged = lines(out).filter((b) => b !== base);
+  return new Set(merged);
+}
+
 function lines(out: string | undefined): string[] {
   return (out ?? "")
     .split("\n")

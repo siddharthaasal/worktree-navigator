@@ -61,16 +61,27 @@ export class WorktreeItem extends vscode.TreeItem {
     const isMain =
       worktree.path.replace(/[\\/]+$/, "") ===
       worktree.repoRoot.replace(/[\\/]+$/, "");
-    this.description = formatDiffStat(worktree.diffStat);
+    const stat = formatDiffStat(worktree.diffStat);
+    this.description = worktree.merged
+      ? stat
+        ? `merged · ${stat}`
+        : "merged"
+      : stat;
     this.tooltip = `${label(worktree)}\n${worktree.path}`;
     this.resourceUri = vscode.Uri.file(worktree.path);
     this.contextValue = worktree.current
       ? "worktree-current"
       : isMain
         ? "worktree-main"
-        : "worktree";
+        : worktree.merged
+          ? "worktree-merged"
+          : "worktree";
     this.iconPath = new vscode.ThemeIcon(
-      worktree.current ? "circle-filled" : "circle-outline",
+      worktree.current
+        ? "circle-filled"
+        : worktree.merged
+          ? "git-merge"
+          : "circle-outline",
     );
 
     if (!worktree.current) {

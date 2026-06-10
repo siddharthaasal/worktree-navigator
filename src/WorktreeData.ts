@@ -1,6 +1,10 @@
 import * as vscode from "vscode";
 import { discoverRepos } from "./repos";
-import { getUncommittedDiffStat } from "./git";
+import {
+  getMergedBranches,
+  getUncommittedDiffStat,
+  resolveBaseBranch,
+} from "./git";
 import type { Repo } from "./models/Repo";
 import type { DiffStat } from "./models/Worktree";
 
@@ -18,15 +22,19 @@ export class WorktreeData implements vscode.Disposable {
 
   private statCache = new Map<string, DiffStat>();
   private statInFlight = new Set<string>();
+  /** Per-repo merged-branch info, keyed by repo root. */
+  private mergedCache = new Map<string, Set<string>>();
   private fireTimer: ReturnType<typeof setTimeout> | undefined;
 
   /**
-   * Discover repositories and attach any cached diff stats. Uncached,
-   * non-bare worktrees have their stats scheduled; `onDidChange` fires once
-   * they resolve so callers can re-`load`.
+   * Discover repositories, attach cached diff stats, and flag worktrees whose
+   * branch is merged into the repo's base branch. Uncached, non-bare worktrees
+   * have their stats scheduled; `onDidChange` fires once they resolve so
+   * callers can re-`load`. Worktrees are sorted current-first, merged-last.
    */
   async load(): Promise<Repo[]> {
     const repos = await discoverRepos();
+    await Promise.all(repos.map((repo) => this.markMerged(repo)));
     for (const repo of repos) {
       for (const wt of repo.worktrees) {
         const cached = this.statCache.get(wt.path);
@@ -36,15 +44,30 @@ export class WorktreeData implements vscode.Disposable {
           this.scheduleStat(wt.path);
         }
       }
+      repo.worktrees.sort(compareWorktrees);
     }
     return repos;
   }
 
-  /** Full reload: drop cached stats and notify. */
+  /** Full reload: drop cached stats/merged info and notify. */
   refresh(): void {
     this.statCache.clear();
     this.statInFlight.clear();
+    this.mergedCache.clear();
     this._onDidChange.fire();
+  }
+
+  /** Compute (cached) the merged-branch set for a repo and flag worktrees. */
+  private async markMerged(repo: Repo): Promise<void> {
+    let merged = this.mergedCache.get(repo.root);
+    if (!merged) {
+      const base = await resolveBaseBranch(repo.root);
+      merged = base ? await getMergedBranches(repo.root, base) : new Set();
+      this.mergedCache.set(repo.root, merged);
+    }
+    for (const wt of repo.worktrees) {
+      wt.merged = !!wt.branch && merged.has(wt.branch);
+    }
   }
 
   dispose(): void {
@@ -76,4 +99,18 @@ export class WorktreeData implements vscode.Disposable {
       this._onDidChange.fire();
     }, 80);
   }
+}
+
+/** Sort order within a repo group: current first, merged last, else by label. */
+function compareWorktrees(
+  a: { current: boolean; merged?: boolean; branch?: string; path: string },
+  b: { current: boolean; merged?: boolean; branch?: string; path: string },
+): number {
+  if (a.current !== b.current) {
+    return a.current ? -1 : 1;
+  }
+  if (!!a.merged !== !!b.merged) {
+    return a.merged ? 1 : -1;
+  }
+  return (a.branch ?? a.path).localeCompare(b.branch ?? b.path);
 }
