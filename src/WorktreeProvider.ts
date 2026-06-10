@@ -58,10 +58,17 @@ export class WorktreeItem extends vscode.TreeItem {
   constructor(readonly worktree: Worktree) {
     super(label(worktree), vscode.TreeItemCollapsibleState.None);
 
+    const isMain =
+      worktree.path.replace(/[\\/]+$/, "") ===
+      worktree.repoRoot.replace(/[\\/]+$/, "");
     this.description = formatDiffStat(worktree.diffStat);
     this.tooltip = `${label(worktree)}\n${worktree.path}`;
     this.resourceUri = vscode.Uri.file(worktree.path);
-    this.contextValue = worktree.current ? "worktree-current" : "worktree";
+    this.contextValue = worktree.current
+      ? "worktree-current"
+      : isMain
+        ? "worktree-main"
+        : "worktree";
     this.iconPath = new vscode.ThemeIcon(
       worktree.current ? "circle-filled" : "circle-outline",
     );

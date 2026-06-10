@@ -18,6 +18,8 @@ interface WorktreeView {
   dir: string;
   current: boolean;
   bare: boolean;
+  /** True for the repository's main worktree (cannot be removed). */
+  isMain: boolean;
   insertions: number;
   deletions: number;
 }
@@ -25,6 +27,8 @@ interface WorktreeView {
 /** Messages received from the webview. */
 type InboundMessage =
   | { type: "switch"; path: string }
+  | { type: "create"; repoRoot: string }
+  | { type: "remove"; path: string }
   | { type: "refresh" }
   | { type: "ready" };
 
@@ -63,6 +67,18 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
       switch (msg.type) {
         case "switch":
           void Promise.resolve(this.onSwitch(msg.path));
+          break;
+        case "create":
+          void vscode.commands.executeCommand(
+            "worktreeNavigator.createWorktree",
+            { repoRoot: msg.repoRoot },
+          );
+          break;
+        case "remove":
+          void vscode.commands.executeCommand(
+            "worktreeNavigator.removeWorktree",
+            { path: msg.path },
+          );
           break;
         case "refresh":
           this.data.refresh();
@@ -127,6 +143,10 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
   }
 }
 
+function normalizePath(p: string): string {
+  return p.replace(/[\\/]+$/, "");
+}
+
 function toRepoView(repo: Repo): RepoView {
   return {
     root: repo.root,
@@ -137,6 +157,7 @@ function toRepoView(repo: Repo): RepoView {
       dir: path.basename(wt.path),
       current: wt.current,
       bare: wt.bare,
+      isMain: normalizePath(wt.path) === normalizePath(repo.root),
       insertions: wt.diffStat?.insertions ?? 0,
       deletions: wt.diffStat?.deletions ?? 0,
     })),

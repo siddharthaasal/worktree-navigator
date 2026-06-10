@@ -9,6 +9,26 @@
     '<circle cx="4.5" cy="3.3" r="1.7"/><circle cx="4.5" cy="12.7" r="1.7"/>' +
     '<circle cx="11.5" cy="5.6" r="1.7"/><path d="M4.5 5v6"/>' +
     '<path d="M4.5 8.5h3.5a3 3 0 0 0 3-3"/></svg>';
+  const PLUS_SVG =
+    '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">' +
+    '<path d="M8 3.5v9M3.5 8h9"/></svg>';
+  const TRASH_SVG =
+    '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M3 4.5h10M6 4.5V3h4v1.5M5 4.5l.6 8h4.8l.6-8"/></svg>';
+
+  function iconButton(svg, title, onClick) {
+    const btn = document.createElement("button");
+    btn.className = "icon-btn";
+    btn.type = "button";
+    btn.title = title;
+    btn.setAttribute("aria-label", title);
+    btn.innerHTML = svg;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
+  }
 
   /** @type {{ collapsed: string[] }} */
   const state = vscode.getState() || { collapsed: [] };
@@ -73,6 +93,15 @@
     const stat = statEl(wt.insertions, wt.deletions);
     if (stat) row.appendChild(stat);
 
+    // Remove action (hover) — never for the current or main worktree.
+    if (!wt.current && !wt.isMain) {
+      row.appendChild(
+        iconButton(TRASH_SVG, "Remove worktree", () => {
+          vscode.postMessage({ type: "remove", path: wt.path });
+        }),
+      );
+    }
+
     if (!wt.current) {
       row.addEventListener("click", () => {
         vscode.postMessage({ type: "switch", path: wt.path });
@@ -109,6 +138,12 @@
     count.className = "repo-count";
     count.textContent = "(" + repo.worktrees.length + ")";
     header.appendChild(count);
+
+    header.appendChild(
+      iconButton(PLUS_SVG, "Create worktree", () => {
+        vscode.postMessage({ type: "create", repoRoot: repo.root });
+      }),
+    );
 
     header.addEventListener("click", () => {
       if (collapsed.has(repo.root)) collapsed.delete(repo.root);

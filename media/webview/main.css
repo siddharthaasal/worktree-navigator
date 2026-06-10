@@ -141,6 +141,37 @@ body {
   margin-left: 5px;
 }
 
+/* ── Action buttons ───────────────────────────────── */
+.icon-btn {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s ease, background 0.1s ease;
+}
+.icon-btn svg {
+  display: block;
+}
+.icon-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
+}
+.repo-header .icon-btn {
+  margin-left: auto;
+}
+.repo-header:hover .icon-btn,
+.worktree:hover .icon-btn,
+.icon-btn:focus-visible {
+  opacity: 0.85;
+}
+
 .empty {
   padding: 14px 12px;
   opacity: 0.7;

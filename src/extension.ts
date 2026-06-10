@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import { WorktreeData } from "./WorktreeData";
-import { WorktreeProvider, WorktreeItem } from "./WorktreeProvider";
+import { WorktreeProvider, WorktreeItem, RepoItem } from "./WorktreeProvider";
 import { WorktreeWebviewProvider } from "./WorktreeWebviewProvider";
 import { getGitAPI } from "./repos";
-import { getCommonDir } from "./git";
+import { switchToWorktree } from "./switch";
+import { createWorktree, removeWorktreeAction } from "./actions";
 
 type ViewMode = "tree" | "pane";
 
@@ -47,6 +48,21 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("worktreeNavigator.togglePane", () => {
       void togglePane(() => treeView.visible || webviewProvider.isVisible());
     }),
+    vscode.commands.registerCommand(
+      "worktreeNavigator.createWorktree",
+      (arg?: RepoItem | { repoRoot?: string }) => {
+        void createWorktree(data, repoRootOf(arg));
+      },
+    ),
+    vscode.commands.registerCommand(
+      "worktreeNavigator.removeWorktree",
+      (arg?: WorktreeItem | { path?: string }) => {
+        const p = pathOf(arg);
+        if (p) {
+          void removeWorktreeAction(data, p);
+        }
+      },
+    ),
     // Refresh when worktree metadata changes on disk (add/remove/HEAD move).
     createWorktreeWatcher(data),
     // Keep the context key in sync if the setting is edited directly.
@@ -95,49 +111,20 @@ async function toggleViewMode(): Promise<void> {
   // onDidChangeConfiguration will re-sync the context key.
 }
 
-/**
- * Switch to a worktree by swapping the matching repository's folder in the
- * workspace, in place — keeping every other repo's folder untouched and
- * avoiding a full window reload.
- *
- * Matching is by shared git common-dir: the workspace folder that belongs to
- * the same repository as the target is replaced with the target path. If no
- * folder belongs to that repo (e.g. the repo is nested under an opened parent
- * folder), the worktree is added as an additional folder instead of wiping the
- * workspace. With no folders open at all, we fall back to opening it.
- */
-export async function switchToWorktree(targetPath: string): Promise<void> {
-  const folders = vscode.workspace.workspaceFolders ?? [];
-  const targetUri = vscode.Uri.file(targetPath);
-
-  if (folders.length === 0) {
-    await vscode.commands.executeCommand("vscode.openFolder", targetUri, false);
-    return;
+/** Resolve a repo root from a command argument (tree RepoItem or webview msg). */
+function repoRootOf(arg?: RepoItem | { repoRoot?: string }): string | undefined {
+  if (arg instanceof RepoItem) {
+    return arg.repo.root;
   }
-
-  const targetCommon = await getCommonDir(targetPath);
-  if (targetCommon) {
-    const commons = await Promise.all(
-      folders.map((f) => getCommonDir(f.uri.fsPath)),
-    );
-    const idx = commons.findIndex(
-      (c) => c && normalize(c) === normalize(targetCommon),
-    );
-    if (idx !== -1) {
-      if (normalize(folders[idx].uri.fsPath) === normalize(targetPath)) {
-        return; // already open at this worktree
-      }
-      vscode.workspace.updateWorkspaceFolders(idx, 1, { uri: targetUri });
-      return;
-    }
-  }
-
-  // No folder belongs to this repo — add the worktree without dropping others.
-  vscode.workspace.updateWorkspaceFolders(folders.length, 0, { uri: targetUri });
+  return arg?.repoRoot;
 }
 
-function normalize(p: string): string {
-  return p.replace(/[\\/]+$/, "");
+/** Resolve a worktree path from a command argument (tree item or webview msg). */
+function pathOf(arg?: WorktreeItem | { path?: string }): string | undefined {
+  if (arg instanceof WorktreeItem) {
+    return arg.worktree.path;
+  }
+  return arg?.path;
 }
 
 /**

@@ -62,6 +62,18 @@
         "command": "worktreeNavigator.togglePane",
         "title": "Toggle Worktrees Pane",
         "category": "Worktrees"
+      },
+      {
+        "command": "worktreeNavigator.createWorktree",
+        "title": "Create Worktree",
+        "category": "Worktrees",
+        "icon": "$(add)"
+      },
+      {
+        "command": "worktreeNavigator.removeWorktree",
+        "title": "Remove Worktree",
+        "category": "Worktrees",
+        "icon": "$(trash)"
       }
     ],
     "keybindings": [
@@ -74,6 +86,11 @@
     "menus": {
       "view/title": [
         {
+          "command": "worktreeNavigator.createWorktree",
+          "when": "view == worktreeNavigator.worktrees || view == worktreeNavigator.pane",
+          "group": "navigation@0"
+        },
+        {
           "command": "worktreeNavigator.refresh",
           "when": "view == worktreeNavigator.worktrees || view == worktreeNavigator.pane",
           "group": "navigation@1"
@@ -82,6 +99,22 @@
           "command": "worktreeNavigator.switchMode",
           "when": "view == worktreeNavigator.worktrees || view == worktreeNavigator.pane",
           "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "worktreeNavigator.createWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem == repo",
+          "group": "inline"
+        },
+        {
+          "command": "worktreeNavigator.removeWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem == worktree",
+          "group": "inline"
+        },
+        {
+          "command": "worktreeNavigator.removeWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem == worktree"
         }
       ]
     },
@@ -97,6 +130,11 @@
           ],
           "default": "pane",
           "description": "Which Worktrees view to show in the sidebar."
+        },
+        "worktreeNavigator.worktreesPath": {
+          "type": "string",
+          "default": "",
+          "description": "Base directory for new worktrees. When empty, new worktrees are created next to the repository (in its parent directory)."
         }
       }
     }
