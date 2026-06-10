@@ -149,7 +149,10 @@
       "properties": {
         "worktreeNavigator.viewMode": {
           "type": "string",
-          "enum": ["pane", "tree"],
+          "enum": [
+            "pane",
+            "tree"
+          ],
           "enumDescriptions": [
             "Rich webview pane (highlighted active row, colored diff pills).",
             "Lightweight native tree list."
@@ -180,6 +183,7 @@
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/codicons": "^0.0.45",
     "esbuild": "^0.20.0",
     "typescript": "^5.4.0"
   }

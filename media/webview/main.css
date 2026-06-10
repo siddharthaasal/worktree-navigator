@@ -16,9 +16,14 @@ body {
   padding: 4px 0 8px;
 }
 
+.codicon {
+  font-size: 15px;
+  line-height: 1;
+}
+
 /* ── Repository group ─────────────────────────────── */
 .repo-group + .repo-group {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 .repo-header {
   display: flex;
@@ -27,16 +32,14 @@ body {
   padding: 5px 12px;
   cursor: pointer;
   font-weight: 600;
-  letter-spacing: 0.01em;
 }
 .repo-header:hover {
   background: var(--vscode-list-hoverBackground);
 }
 .repo-twisty {
-  width: 10px;
   flex: 0 0 auto;
   opacity: 0.7;
-  font-size: 10px;
+  font-size: 14px !important;
   transition: transform 0.12s ease;
 }
 .repo-group.collapsed .repo-twisty {
@@ -61,8 +64,9 @@ body {
   white-space: nowrap;
 }
 .repo-count {
-  opacity: 0.55;
+  opacity: 0.5;
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .repo-group.collapsed .worktrees {
@@ -74,7 +78,7 @@ body {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 4px 12px 4px 30px;
+  padding: 4px 12px 4px 28px;
   cursor: pointer;
   border-left: 2px solid transparent;
 }
@@ -88,21 +92,18 @@ body {
   cursor: default;
 }
 
+/* Branch icon, colored by lifecycle state. */
 .wt-icon {
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  opacity: 0.85;
+  font-size: 14px !important;
 }
-.worktree.current .wt-icon {
-  color: var(--accent);
-  opacity: 1;
+.wt-icon.state-merged {
+  color: var(--vscode-charts-purple, #b180d7);
 }
-.wt-icon svg {
-  display: block;
+.wt-icon.state-pushed {
+  color: var(--vscode-charts-orange, #d18616);
 }
+/* state-local → inherits default foreground (white in dark themes). */
 
 .wt-text {
   flex: 1 1 auto;
@@ -121,57 +122,10 @@ body {
 }
 .wt-sub {
   font-size: 0.85em;
-  opacity: 0.55;
+  opacity: 0.5;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.worktree.merged .wt-label,
-.worktree.merged .wt-icon {
-  opacity: 0.55;
-}
-.worktree.merged .wt-icon {
-  color: var(--vscode-gitDecoration-ignoredResourceForeground, #8c8c8c);
-}
-.wt-tag {
-  flex: 0 0 auto;
-  font-size: 0.78em;
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: var(--vscode-badge-background);
-  color: var(--vscode-badge-foreground);
-  opacity: 0.8;
-}
-
-/* ── Pull request badge ───────────────────────────── */
-.wt-pr {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.82em;
-  cursor: pointer;
-  padding: 0 2px;
-  border-radius: 4px;
-}
-.wt-pr svg {
-  display: block;
-}
-.wt-pr:hover {
-  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
-}
-.wt-pr.pr-open {
-  color: var(--vscode-charts-orange, #d18616);
-}
-.wt-pr.pr-draft {
-  color: var(--vscode-charts-gray, #8c8c8c);
-}
-.wt-pr.pr-merged {
-  color: var(--vscode-charts-purple, #b180d7);
-}
-.wt-pr.pr-closed {
-  color: var(--vscode-charts-red, #f14c4c);
 }
 
 .wt-stat {
@@ -188,13 +142,13 @@ body {
   margin-left: 5px;
 }
 
-/* ── Action buttons ───────────────────────────────── */
+/* ── Hover action buttons ─────────────────────────── */
 .icon-btn {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: none;
   border-radius: 4px;
@@ -204,8 +158,8 @@ body {
   opacity: 0;
   transition: opacity 0.1s ease, background 0.1s ease;
 }
-.icon-btn svg {
-  display: block;
+.icon-btn .codicon {
+  font-size: 14px;
 }
 .icon-btn:hover {
   background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
@@ -216,7 +170,10 @@ body {
 .repo-header:hover .icon-btn,
 .worktree:hover .icon-btn,
 .icon-btn:focus-visible {
-  opacity: 0.85;
+  opacity: 0.8;
+}
+.icon-btn:hover {
+  opacity: 1 !important;
 }
 
 .empty {

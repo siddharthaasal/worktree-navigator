@@ -6,8 +6,15 @@ import {
   resolveBaseBranch,
 } from "./git";
 import { GitHubService } from "./github";
+import { listBranches } from "./git";
 import type { Repo } from "./models/Repo";
 import type { DiffStat } from "./models/Worktree";
+
+/** Cached per-repo branch metadata used to flag worktree state. */
+interface RepoState {
+  merged: Set<string>;
+  remote: Set<string>;
+}
 
 /**
  * Shared worktree data source for both the tree and webview views.
@@ -23,8 +30,8 @@ export class WorktreeData implements vscode.Disposable {
 
   private statCache = new Map<string, DiffStat>();
   private statInFlight = new Set<string>();
-  /** Per-repo merged-branch info, keyed by repo root. */
-  private mergedCache = new Map<string, Set<string>>();
+  /** Per-repo branch state (merged + remote sets), keyed by repo root. */
+  private repoStateCache = new Map<string, RepoState>();
   private github = new GitHubService();
   private prInFlight = new Set<string>();
   private fireTimer: ReturnType<typeof setTimeout> | undefined;
@@ -37,7 +44,7 @@ export class WorktreeData implements vscode.Disposable {
    */
   async load(): Promise<Repo[]> {
     const repos = await discoverRepos();
-    await Promise.all(repos.map((repo) => this.markMerged(repo)));
+    await Promise.all(repos.map((repo) => this.markBranchState(repo)));
     const prEnabled = this.prEnabled();
     for (const repo of repos) {
       for (const wt of repo.worktrees) {
@@ -56,11 +63,11 @@ export class WorktreeData implements vscode.Disposable {
     return repos;
   }
 
-  /** Full reload: drop cached stats/merged/PR info and notify. */
+  /** Full reload: drop cached stats/branch-state/PR info and notify. */
   refresh(): void {
     this.statCache.clear();
     this.statInFlight.clear();
-    this.mergedCache.clear();
+    this.repoStateCache.clear();
     this.prInFlight.clear();
     this.github.clear();
     this._onDidChange.fire();
@@ -100,16 +107,23 @@ export class WorktreeData implements vscode.Disposable {
       });
   }
 
-  /** Compute (cached) the merged-branch set for a repo and flag worktrees. */
-  private async markMerged(repo: Repo): Promise<void> {
-    let merged = this.mergedCache.get(repo.root);
-    if (!merged) {
-      const base = await resolveBaseBranch(repo.root);
-      merged = base ? await getMergedBranches(repo.root, base) : new Set();
-      this.mergedCache.set(repo.root, merged);
+  /** Compute (cached) merged + remote branch sets and flag worktrees. */
+  private async markBranchState(repo: Repo): Promise<void> {
+    let state = this.repoStateCache.get(repo.root);
+    if (!state) {
+      const [base, branches] = await Promise.all([
+        resolveBaseBranch(repo.root),
+        listBranches(repo.root),
+      ]);
+      const merged = base
+        ? await getMergedBranches(repo.root, base)
+        : new Set<string>();
+      state = { merged, remote: new Set(branches.remote) };
+      this.repoStateCache.set(repo.root, state);
     }
     for (const wt of repo.worktrees) {
-      wt.merged = !!wt.branch && merged.has(wt.branch);
+      wt.merged = !!wt.branch && state.merged.has(wt.branch);
+      wt.pushed = !!wt.branch && state.remote.has(wt.branch);
     }
   }
 

@@ -3,72 +3,34 @@
   const vscode = acquireVsCodeApi();
   const root = document.getElementById("root");
 
-  // Static, self-authored SVG markup (no user data) — safe to assign as HTML.
-  const BRANCH_SVG =
-    '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">' +
-    '<circle cx="4.5" cy="3.3" r="1.7"/><circle cx="4.5" cy="12.7" r="1.7"/>' +
-    '<circle cx="11.5" cy="5.6" r="1.7"/><path d="M4.5 5v6"/>' +
-    '<path d="M4.5 8.5h3.5a3 3 0 0 0 3-3"/></svg>';
-  const PLUS_SVG =
-    '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">' +
-    '<path d="M8 3.5v9M3.5 8h9"/></svg>';
-  const TRASH_SVG =
-    '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M3 4.5h10M6 4.5V3h4v1.5M5 4.5l.6 8h4.8l.6-8"/></svg>';
-  const ARCHIVE_SVG =
-    '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
-    '<rect x="2.5" y="3" width="11" height="3" rx="0.5"/><path d="M3.5 6v6.5h9V6M6.5 9h3"/></svg>';
-  const PR_SVG =
-    '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
-    '<circle cx="4" cy="4" r="1.7"/><circle cx="4" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/>' +
-    '<path d="M4 5.7v4.6M12 10.3V7.5a2 2 0 0 0-2-2H7.5M9 4l-1.5 1.5L9 7"/></svg>';
-
-  function prClass(pr) {
-    if (pr.state === "MERGED") return "pr-merged";
-    if (pr.state === "CLOSED") return "pr-closed";
-    return pr.isDraft ? "pr-draft" : "pr-open";
-  }
-  function prTitle(pr) {
-    const s =
-      pr.state === "OPEN" ? (pr.isDraft ? "draft" : "open") : pr.state.toLowerCase();
-    return "PR #" + pr.number + " · " + s;
-  }
-  function prBadge(pr) {
-    const el = document.createElement("span");
-    el.className = "wt-pr " + prClass(pr);
-    el.title = prTitle(pr);
-    el.innerHTML = PR_SVG;
-    const num = document.createElement("span");
-    num.className = "pr-num";
-    num.textContent = "#" + pr.number;
-    el.appendChild(num);
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      vscode.postMessage({ type: "openPr", url: pr.url });
-    });
-    return el;
-  }
-
-  function iconButton(svg, title, onClick) {
-    const btn = document.createElement("button");
-    btn.className = "icon-btn";
-    btn.type = "button";
-    btn.title = title;
-    btn.setAttribute("aria-label", title);
-    btn.innerHTML = svg;
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onClick();
-    });
-    return btn;
-  }
-
   /** @type {{ collapsed: string[] }} */
   const state = vscode.getState() || { collapsed: [] };
   const collapsed = new Set(state.collapsed);
 
   function persist() {
     vscode.setState({ collapsed: [...collapsed] });
+  }
+
+  /** A codicon glyph span. */
+  function codicon(name) {
+    const el = document.createElement("span");
+    el.className = "codicon codicon-" + name;
+    return el;
+  }
+
+  /** A hover action button wrapping a codicon. */
+  function iconButton(name, title, onClick) {
+    const btn = document.createElement("button");
+    btn.className = "icon-btn";
+    btn.type = "button";
+    btn.title = title;
+    btn.setAttribute("aria-label", title);
+    btn.appendChild(codicon(name));
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
   }
 
   /** Abbreviate a line count: 999 → "999", 1300 → "1.3k", 12000 → "12k". */
@@ -98,15 +60,35 @@
     return wrap;
   }
 
+  function stateText(s) {
+    return s === "merged"
+      ? "merged"
+      : s === "pushed"
+        ? "pushed (in progress)"
+        : "local only";
+  }
+
+  function prText(pr) {
+    const s =
+      pr.state === "OPEN" ? (pr.isDraft ? "draft" : "open") : pr.state.toLowerCase();
+    return "PR #" + pr.number + " · " + s;
+  }
+
+  /** Multi-line hover details, replacing the on-row badges. */
+  function tooltip(wt) {
+    const parts = [wt.label, wt.path, "Branch: " + stateText(wt.state)];
+    if (wt.pr) parts.push(prText(wt.pr));
+    return parts.join("\n");
+  }
+
   function worktreeRow(wt) {
     const row = document.createElement("div");
-    row.className =
-      "worktree" + (wt.current ? " current" : "") + (wt.merged ? " merged" : "");
-    row.title = wt.path;
+    row.className = "worktree" + (wt.current ? " current" : "");
+    row.title = tooltip(wt);
 
-    const icon = document.createElement("span");
-    icon.className = "wt-icon";
-    icon.innerHTML = BRANCH_SVG;
+    // Colored branch icon by lifecycle state.
+    const icon = codicon("git-branch");
+    icon.classList.add("wt-icon", "state-" + wt.state);
     row.appendChild(icon);
 
     const text = document.createElement("span");
@@ -115,7 +97,6 @@
     label.className = "wt-label";
     label.textContent = wt.label;
     text.appendChild(label);
-    // Dimmed subtitle: the worktree folder name, when it adds information.
     if (wt.dir && wt.dir !== wt.label) {
       const sub = document.createElement("span");
       sub.className = "wt-sub";
@@ -124,29 +105,27 @@
     }
     row.appendChild(text);
 
-    if (wt.pr) row.appendChild(prBadge(wt.pr));
-
-    if (wt.merged) {
-      const tag = document.createElement("span");
-      tag.className = "wt-tag";
-      tag.textContent = "merged";
-      row.appendChild(tag);
-    }
-
     const stat = statEl(wt.insertions, wt.deletions);
     if (stat) row.appendChild(stat);
 
-    // Hover actions — never for the current or main worktree.
+    // Hover actions.
+    if (wt.pr) {
+      row.appendChild(
+        iconButton("git-pull-request", prText(wt.pr), () => {
+          vscode.postMessage({ type: "openPr", url: wt.pr.url });
+        }),
+      );
+    }
     if (!wt.current && !wt.isMain) {
-      if (wt.merged) {
+      if (wt.state === "merged") {
         row.appendChild(
-          iconButton(ARCHIVE_SVG, "Archive worktree (remove + delete branch)", () => {
+          iconButton("archive", "Archive (remove + delete branch)", () => {
             vscode.postMessage({ type: "archive", path: wt.path });
           }),
         );
       }
       row.appendChild(
-        iconButton(TRASH_SVG, "Remove worktree", () => {
+        iconButton("trash", "Remove worktree", () => {
           vscode.postMessage({ type: "remove", path: wt.path });
         }),
       );
@@ -169,9 +148,8 @@
     header.className = "repo-header";
     header.title = repo.root;
 
-    const twisty = document.createElement("span");
-    twisty.className = "repo-twisty";
-    twisty.textContent = "▾";
+    const twisty = codicon("chevron-down");
+    twisty.classList.add("repo-twisty");
     header.appendChild(twisty);
 
     const badge = document.createElement("span");
@@ -186,11 +164,11 @@
 
     const count = document.createElement("span");
     count.className = "repo-count";
-    count.textContent = "(" + repo.worktrees.length + ")";
+    count.textContent = repo.worktrees.length;
     header.appendChild(count);
 
     header.appendChild(
-      iconButton(PLUS_SVG, "Create worktree", () => {
+      iconButton("add", "Create worktree", () => {
         vscode.postMessage({ type: "create", repoRoot: repo.root });
       }),
     );

@@ -23,9 +23,19 @@ export type Worktree = {
   diffStat?: DiffStat;
   /** True when this worktree's branch is fully merged into the base branch. */
   merged?: boolean;
+  /** True when the branch exists on a remote (has been pushed). */
+  pushed?: boolean;
   /** Associated GitHub pull request, when PR status is enabled and found. */
   pr?: PullRequestInfo;
 };
+
+/**
+ * Branch lifecycle, driving the icon color:
+ * - `merged` (purple): merged into the base branch (or PR merged)
+ * - `pushed` (orange): exists on a remote but not yet merged
+ * - `local`  (default/white): local-only, never pushed
+ */
+export type BranchState = "merged" | "pushed" | "local";
 
 export type PullRequestInfo = {
   number: number;

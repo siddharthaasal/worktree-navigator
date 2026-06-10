@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import type { WorktreeData } from "./WorktreeData";
 import type { Repo } from "./models/Repo";
-import type { PullRequestInfo, Worktree } from "./models/Worktree";
+import type { BranchState, PullRequestInfo, Worktree } from "./models/Worktree";
 import { formatDiffStat } from "./utils/formatDiffStat";
 import { worktreeLabel as label } from "./utils/worktreeLabel";
+import { branchState } from "./utils/branchState";
 
 type Node = RepoItem | WorktreeItem | MessageItem;
 
@@ -63,15 +64,17 @@ export class WorktreeItem extends vscode.TreeItem {
       worktree.repoRoot.replace(/[\\/]+$/, "");
     const stat = formatDiffStat(worktree.diffStat);
     const pr = worktree.pr;
-    const descParts = [
-      pr ? `#${pr.number}` : "",
-      worktree.merged ? "merged" : "",
-      stat,
-    ].filter(Boolean);
-    this.description = descParts.join(" · ");
+    const state = branchState(worktree);
+
+    // Decluttered: only the diff stat (and a "current" hint) on the row.
+    this.description = [worktree.current ? "current" : "", stat]
+      .filter(Boolean)
+      .join(" · ");
+    // Details live in the tooltip on hover.
     this.tooltip = [
       label(worktree),
       worktree.path,
+      `Branch: ${stateLabel(state)}`,
       pr ? `PR #${pr.number} · ${prLabel(pr)}` : "",
     ]
       .filter(Boolean)
@@ -84,11 +87,8 @@ export class WorktreeItem extends vscode.TreeItem {
         : worktree.merged
           ? "worktree-merged"
           : "worktree";
-    this.iconPath = worktree.current
-      ? new vscode.ThemeIcon("circle-filled")
-      : pr
-        ? new vscode.ThemeIcon("git-pull-request", prColor(pr))
-        : new vscode.ThemeIcon(worktree.merged ? "git-merge" : "circle-outline");
+    // Colored branch icon by lifecycle state (purple/orange/white).
+    this.iconPath = new vscode.ThemeIcon("git-branch", stateColor(state));
 
     if (!worktree.current) {
       this.command = {
@@ -108,16 +108,23 @@ function prLabel(pr: PullRequestInfo): string {
   return pr.state.toLowerCase();
 }
 
-/** Theme color for a PR state — open is orange, merged purple, etc. */
-function prColor(pr: PullRequestInfo): vscode.ThemeColor {
-  if (pr.state === "MERGED") {
+/** Branch-icon color by lifecycle state. `local` uses the theme default. */
+function stateColor(state: BranchState): vscode.ThemeColor | undefined {
+  if (state === "merged") {
     return new vscode.ThemeColor("charts.purple");
   }
-  if (pr.state === "CLOSED") {
-    return new vscode.ThemeColor("charts.red");
+  if (state === "pushed") {
+    return new vscode.ThemeColor("charts.orange");
   }
-  // OPEN
-  return new vscode.ThemeColor(pr.isDraft ? "charts.gray" : "charts.orange");
+  return undefined; // local — default foreground
+}
+
+function stateLabel(state: BranchState): string {
+  return state === "merged"
+    ? "merged"
+    : state === "pushed"
+      ? "pushed (in progress)"
+      : "local only";
 }
 
 /** Placeholder node (e.g. no repositories). */

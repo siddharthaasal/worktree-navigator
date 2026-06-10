@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import type { WorktreeData } from "./WorktreeData";
 import type { Repo } from "./models/Repo";
 import { worktreeLabel } from "./utils/worktreeLabel";
+import { branchState } from "./utils/branchState";
 
 /** Serializable view model posted to the webview. */
 interface RepoView {
@@ -20,8 +21,8 @@ interface WorktreeView {
   bare: boolean;
   /** True for the repository's main worktree (cannot be removed). */
   isMain: boolean;
-  /** True when the branch is merged into the repo's base branch. */
-  merged: boolean;
+  /** Branch lifecycle: drives the icon color (purple/orange/white). */
+  state: "merged" | "pushed" | "local";
   /** Associated GitHub PR, when enabled and found. */
   pr?: { number: number; state: string; isDraft: boolean; url: string };
   insertions: number;
@@ -137,6 +138,7 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
     const csp = [
       `default-src 'none'`,
       `style-src ${webview.cspSource}`,
+      `font-src ${webview.cspSource}`,
       `script-src 'nonce-${nonce}'`,
       `img-src ${webview.cspSource}`,
     ].join("; ");
@@ -147,6 +149,7 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="${asset("codicons/codicon.css")}" />
   <link rel="stylesheet" href="${asset("main.css")}" />
   <title>Worktrees</title>
 </head>
@@ -173,7 +176,7 @@ function toRepoView(repo: Repo): RepoView {
       current: wt.current,
       bare: wt.bare,
       isMain: normalizePath(wt.path) === normalizePath(repo.root),
-      merged: !!wt.merged,
+      state: branchState(wt),
       pr: wt.pr,
       insertions: wt.diffStat?.insertions ?? 0,
       deletions: wt.diffStat?.deletions ?? 0,
