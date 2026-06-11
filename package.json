@@ -184,6 +184,16 @@
           "type": "boolean",
           "default": false,
           "description": "Show GitHub pull-request status on worktrees (open = orange, merged = purple, etc.). Requires signing in to GitHub; uses VS Code's built-in GitHub authentication."
+        },
+        "worktreeNavigator.showDiffStat": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show per-worktree uncommitted line counts (e.g. +12 -3) next to each worktree."
+        },
+        "worktreeNavigator.showSubtitle": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the worktree folder name as a dimmed subtitle under the branch name (pane only)."
         }
       }
     }

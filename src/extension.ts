@@ -135,6 +135,12 @@ export function activate(context: vscode.ExtensionContext): void {
           data.refresh();
         }
       }
+      if (
+        e.affectsConfiguration("worktreeNavigator.showDiffStat") ||
+        e.affectsConfiguration("worktreeNavigator.showSubtitle")
+      ) {
+        data.refresh();
+      }
     }),
   );
 

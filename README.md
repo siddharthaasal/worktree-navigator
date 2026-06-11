@@ -10,8 +10,6 @@ worktrees from a sidebar.
   extension), grouped Conductor-style as **repo → worktrees**.
 - Lists each repo's worktrees (`git worktree list --porcelain`), deduped by the
   shared `.git` so all worktrees of one repo collapse into one group.
-- Shows a per-worktree **diff stat** (`+407`, `+1.3k -25`) of uncommitted
-  working-tree changes, including new untracked files.
 - **Repo icon** is the GitHub owner avatar (when the repo has a github.com
   origin), falling back to a letter badge.
 - Each worktree gets a **situation-appropriate git icon**, colored by lifecycle:
@@ -63,6 +61,17 @@ GitHub authentication. Each worktree then shows its PR: **open = orange**,
 draft = gray, **merged = purple**, closed = red, with the PR number; click it to
 open the PR. Read-only — the extension never modifies PRs. Repos without a
 GitHub `origin` simply show nothing.
+
+### Settings (extras are opt-in)
+
+The default view is minimal — branch name, colored icon, and hover actions
+(archive/remove). Everything else is off by default:
+
+- `worktreeNavigator.showDiffStat` — per-worktree `+N -N` uncommitted line counts.
+- `worktreeNavigator.showSubtitle` — worktree folder name under the branch (pane).
+- `worktreeNavigator.showPullRequests` — GitHub PR status (prompts sign-in).
+- `worktreeNavigator.viewMode` — `pane` (default) or `tree`.
+- `worktreeNavigator.worktreesPath` — base directory for new worktrees.
 
 See [plan-v0.md](plan-v0.md) (MVP), [plan-v1.md](plan-v1.md) (multi-repo +
 diff stats), [plan-v2.md](plan-v2.md) (webview pane + modes), and

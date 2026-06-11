@@ -80,8 +80,8 @@ body {
 .worktree {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 4px 12px 4px 28px;
+  gap: 10px;
+  padding: 7px 12px 7px 28px;
   cursor: pointer;
   border-left: 2px solid transparent;
 }

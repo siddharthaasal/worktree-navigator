@@ -127,9 +127,13 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
       return;
     }
     const repos = await this.data.load();
+    const showSubtitle = vscode.workspace
+      .getConfiguration("worktreeNavigator")
+      .get<boolean>("showSubtitle", false);
     await this.view.webview.postMessage({
       type: "render",
       repos: repos.map(toRepoView),
+      prefs: { showSubtitle },
     });
   }
 

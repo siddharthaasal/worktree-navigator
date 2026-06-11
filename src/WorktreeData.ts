@@ -49,13 +49,16 @@ export class WorktreeData implements vscode.Disposable {
     const repos = await discoverRepos();
     await Promise.all(repos.map((repo) => this.markBranchState(repo)));
     const prEnabled = this.prEnabled();
+    const diffEnabled = this.diffStatEnabled();
     for (const repo of repos) {
-      for (const wt of repo.worktrees) {
-        const cached = this.statCache.get(wt.path);
-        if (cached) {
-          wt.diffStat = cached;
-        } else if (!wt.bare) {
-          this.scheduleStat(wt.path);
+      if (diffEnabled) {
+        for (const wt of repo.worktrees) {
+          const cached = this.statCache.get(wt.path);
+          if (cached) {
+            wt.diffStat = cached;
+          } else if (!wt.bare) {
+            this.scheduleStat(wt.path);
+          }
         }
       }
       if (prEnabled) {
@@ -80,6 +83,12 @@ export class WorktreeData implements vscode.Disposable {
     return vscode.workspace
       .getConfiguration("worktreeNavigator")
       .get<boolean>("showPullRequests", false);
+  }
+
+  private diffStatEnabled(): boolean {
+    return vscode.workspace
+      .getConfiguration("worktreeNavigator")
+      .get<boolean>("showDiffStat", false);
   }
 
   /** Attach cached PR info to a repo's worktrees, scheduling a fetch if cold. */

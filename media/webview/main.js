@@ -7,6 +7,9 @@
   const state = vscode.getState() || { collapsed: [] };
   const collapsed = new Set(state.collapsed);
 
+  /** Display preferences from settings (sent with each render). */
+  let prefs = { showSubtitle: false };
+
   function persist() {
     vscode.setState({ collapsed: [...collapsed] });
   }
@@ -98,7 +101,7 @@
     label.className = "wt-label";
     label.textContent = wt.label;
     text.appendChild(label);
-    if (wt.dir && wt.dir !== wt.label) {
+    if (prefs.showSubtitle && wt.dir && wt.dir !== wt.label) {
       const sub = document.createElement("span");
       sub.className = "wt-sub";
       sub.textContent = wt.dir;
@@ -225,7 +228,10 @@
 
   window.addEventListener("message", (event) => {
     const msg = event.data;
-    if (msg && msg.type === "render") render(msg.repos);
+    if (msg && msg.type === "render") {
+      if (msg.prefs) prefs = msg.prefs;
+      render(msg.repos);
+    }
   });
 
   vscode.postMessage({ type: "ready" });
