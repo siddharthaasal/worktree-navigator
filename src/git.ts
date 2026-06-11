@@ -269,6 +269,90 @@ export async function getMergedBranches(
   return new Set(merged);
 }
 
+/** The branch's upstream ref (e.g. "origin/feature"), or undefined if unset. */
+export async function getUpstreamRef(
+  worktreePath: string,
+): Promise<string | undefined> {
+  const out = await git(worktreePath, [
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{upstream}",
+  ]);
+  return out?.trim() || undefined;
+}
+
+/**
+ * The ref a worktree's changes are diffed against: its upstream if set, else
+ * the merge-base with the base branch, else HEAD.
+ */
+export async function getCompareRef(worktreePath: string): Promise<string> {
+  const upstream = await getUpstreamRef(worktreePath);
+  if (upstream) {
+    return upstream;
+  }
+  const base = await resolveBaseBranch(worktreePath);
+  if (base) {
+    const mb = await git(worktreePath, ["merge-base", base, "HEAD"]);
+    if (mb?.trim()) {
+      return mb.trim();
+    }
+  }
+  return "HEAD";
+}
+
+export type ChangeStatus = "A" | "M" | "D" | "R" | "C" | "T" | "U";
+
+export interface ChangedFile {
+  status: ChangeStatus;
+  /** Current path (the new path for renames/copies). */
+  path: string;
+  /** Original path for renames/copies. */
+  oldPath?: string;
+}
+
+/** Files changed between `ref` and the worktree's working tree. */
+export async function getChangedFiles(
+  worktreePath: string,
+  ref: string,
+): Promise<ChangedFile[]> {
+  const out = await git(worktreePath, ["diff", "--name-status", "-z", ref]);
+  return out ? parseNameStatusZ(out) : [];
+}
+
+/**
+ * Parse `git diff --name-status -z` output. In `-z` mode all fields are
+ * NUL-separated: `status \0 path` for most entries, and
+ * `status \0 oldPath \0 newPath` for renames (R) and copies (C).
+ */
+export function parseNameStatusZ(out: string): ChangedFile[] {
+  const tokens = out.split("\0").filter((t) => t.length > 0);
+  const files: ChangedFile[] = [];
+  for (let i = 0; i < tokens.length; ) {
+    const status = tokens[i][0] as ChangeStatus;
+    if (status === "R" || status === "C") {
+      const oldPath = tokens[i + 1];
+      const path = tokens[i + 2];
+      files.push({ status, path, oldPath });
+      i += 3;
+    } else {
+      files.push({ status, path: tokens[i + 1] });
+      i += 2;
+    }
+  }
+  return files;
+}
+
+/** Contents of a file at a given ref (empty string if absent there). */
+export async function getFileAtRef(
+  worktreePath: string,
+  ref: string,
+  relPath: string,
+): Promise<string> {
+  const out = await git(worktreePath, ["show", `${ref}:${relPath}`]);
+  return out ?? "";
+}
+
 function lines(out: string | undefined): string[] {
   return (out ?? "")
     .split("\n")

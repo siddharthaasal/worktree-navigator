@@ -37,6 +37,11 @@
           "name": "Worktrees",
           "icon": "media/worktrees.svg",
           "when": "worktreeNavigator.viewMode == 'tree'"
+        },
+        {
+          "id": "worktreeNavigator.changes",
+          "name": "Changes",
+          "icon": "media/worktrees.svg"
         }
       ]
     },
@@ -86,6 +91,11 @@
         "title": "Sign in to GitHub (for PR status)",
         "category": "Worktrees",
         "icon": "$(sign-in)"
+      },
+      {
+        "command": "worktreeNavigator.openChange",
+        "title": "Open Changes",
+        "category": "Worktrees"
       }
     ],
     "keybindings": [
@@ -116,6 +126,11 @@
           "command": "worktreeNavigator.signInGitHub",
           "when": "(view == worktreeNavigator.worktrees || view == worktreeNavigator.pane) && config.worktreeNavigator.showPullRequests",
           "group": "navigation@3"
+        },
+        {
+          "command": "worktreeNavigator.refresh",
+          "when": "view == worktreeNavigator.changes",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [

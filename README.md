@@ -42,6 +42,16 @@ the sidebar pane with **`Cmd+Alt+W`** (mac) / **`Ctrl+Alt+W`** (win/linux).
   are dimmed and tagged `merged`, sorted to the bottom.
 - **Archive** — on a merged worktree, remove it and optionally delete its branch.
 
+### Changes view (per-worktree diff tree)
+
+A **Changes** view below the worktree list shows the changed files of the
+**focused** worktree — the one you last clicked/switched to. Files are grouped
+into folders with a status letter (M/A/D/R); clicking one opens the normal VS
+Code diff editor. The diff is **branch vs upstream** (`origin/<branch>` →
+working tree: unpushed commits + uncommitted edits), falling back to the base
+branch for local-only worktrees. Scoped to one worktree — unlike the built-in
+Source Control view, which shows every open folder at once.
+
 ### GitHub pull-request status (optional)
 
 Enable `worktreeNavigator.showPullRequests` and sign in via VS Code's built-in
@@ -76,8 +86,11 @@ src/
 ├── WorktreeWebviewProvider.ts    pane view — webview shell + message passing
 ├── actions.ts                    create / remove / archive worktree flows
 ├── switch.ts                     switch-to-worktree (in-place folder swap)
+├── focus.ts                      tracks the worktree the Changes view is scoped to
+├── ChangesProvider.ts            Changes view — folder-grouped changed files
+├── diffContent.ts                read-only base side of the diff (git show <ref>:<path>)
 ├── repos.ts                      discover + dedup repositories (Git API + fallback)
-├── git.ts                        run git: worktree list/add/remove, branches, merged, remote
+├── git.ts                        run git: worktree list/add/remove, branches, merged, diff, remote
 ├── github.ts                     GitHub auth + GraphQL PR client (cached, read-only)
 ├── models/
 │   ├── Worktree.ts               Worktree + DiffStat + PullRequestInfo types

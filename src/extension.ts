@@ -1,10 +1,15 @@
 import * as vscode from "vscode";
+import * as path from "node:path";
 import { WorktreeData } from "./WorktreeData";
 import { WorktreeProvider, WorktreeItem, RepoItem } from "./WorktreeProvider";
 import { WorktreeWebviewProvider } from "./WorktreeWebviewProvider";
+import { ChangesProvider } from "./ChangesProvider";
+import { FocusManager } from "./focus";
+import { BaseContentProvider, DIFF_SCHEME, baseUri, emptyUri } from "./diffContent";
 import { getGitAPI } from "./repos";
 import { switchToWorktree } from "./switch";
 import { createWorktree, removeWorktreeAction } from "./actions";
+import type { ChangedFile } from "./git";
 
 type ViewMode = "tree" | "pane";
 
@@ -12,21 +17,50 @@ export function activate(context: vscode.ExtensionContext): void {
   const data = new WorktreeData();
   context.subscriptions.push(data);
 
+  const focus = new FocusManager();
+  context.subscriptions.push(focus);
+
   const treeProvider = new WorktreeProvider(data);
   const webviewProvider = new WorktreeWebviewProvider(
     context.extensionUri,
     data,
-    switchToWorktree,
+    (p) => focusAndSwitch(data, focus, p),
   );
+  const changesProvider = new ChangesProvider(focus);
+  context.subscriptions.push(changesProvider);
+  // Re-render Changes when underlying data refreshes (e.g. files changed).
+  data.onDidChange(() => changesProvider.refresh());
 
   syncViewModeContext();
 
   const treeView = vscode.window.createTreeView("worktreeNavigator.worktrees", {
     treeDataProvider: treeProvider,
   });
+  const changesView = vscode.window.createTreeView("worktreeNavigator.changes", {
+    treeDataProvider: changesProvider,
+  });
+
+  // Focus the Changes view on the current worktree at startup.
+  void data.load().then((repos) => {
+    for (const repo of repos) {
+      const current = repo.worktrees.find((w) => w.current);
+      if (current) {
+        focus.set({
+          worktreePath: current.path,
+          label: current.branch ?? path.basename(current.path),
+        });
+        break;
+      }
+    }
+  });
 
   context.subscriptions.push(
     treeView,
+    changesView,
+    vscode.workspace.registerTextDocumentContentProvider(
+      DIFF_SCHEME,
+      new BaseContentProvider(),
+    ),
     vscode.window.registerWebviewViewProvider(
       WorktreeWebviewProvider.viewId,
       webviewProvider,
@@ -38,7 +72,15 @@ export function activate(context: vscode.ExtensionContext): void {
       "worktreeNavigator.switch",
       (item?: WorktreeItem) => {
         if (item && !item.worktree.current) {
-          void switchToWorktree(item.worktree.path);
+          void focusAndSwitch(data, focus, item.worktree.path);
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
+      "worktreeNavigator.openChange",
+      (arg?: { worktreePath: string; ref: string; file: ChangedFile }) => {
+        if (arg) {
+          void openChange(arg);
         }
       },
     ),
@@ -140,6 +182,46 @@ async function signInGitHub(data: WorktreeData): Promise<void> {
       `GitHub sign-in failed: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+}
+
+/** Focus the Changes view on a worktree, then switch the workspace to it. */
+async function focusAndSwitch(
+  data: WorktreeData,
+  focus: FocusManager,
+  targetPath: string,
+): Promise<void> {
+  const norm = (p: string) => p.replace(/[\\/]+$/, "");
+  const repos = await data.load();
+  let label = path.basename(targetPath);
+  for (const repo of repos) {
+    const wt = repo.worktrees.find((w) => norm(w.path) === norm(targetPath));
+    if (wt) {
+      label = wt.branch ?? path.basename(wt.path);
+      break;
+    }
+  }
+  focus.set({ worktreePath: targetPath, label });
+  await switchToWorktree(targetPath);
+}
+
+/** Open the diff editor for a changed file (base ref ↔ working tree). */
+async function openChange(arg: {
+  worktreePath: string;
+  ref: string;
+  file: ChangedFile;
+}): Promise<void> {
+  const { worktreePath, ref, file } = arg;
+  const onDisk = vscode.Uri.file(path.join(worktreePath, file.path));
+  const left =
+    file.status === "A" ? emptyUri(file.path) : baseUri(worktreePath, ref, file.oldPath ?? file.path);
+  const right = file.status === "D" ? emptyUri(file.path) : onDisk;
+  const title = `${path.basename(file.path)} (${shortRef(ref)} ↔ working)`;
+  await vscode.commands.executeCommand("vscode.diff", left, right, title);
+}
+
+/** Shorten a 40-char SHA to 7; leave named refs untouched. */
+function shortRef(ref: string): string {
+  return /^[0-9a-f]{40}$/.test(ref) ? ref.slice(0, 7) : ref;
 }
 
 /** Resolve a repo root from a command argument (tree RepoItem or webview msg). */
