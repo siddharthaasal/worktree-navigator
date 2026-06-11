@@ -12,8 +12,12 @@ worktrees from a sidebar.
   shared `.git` so all worktrees of one repo collapse into one group.
 - Shows a per-worktree **diff stat** (`+407`, `+1.3k -25`) of uncommitted
   working-tree changes, including new untracked files.
-- Marks the worktree open in the current window with a filled circle (others
-  are hollow).
+- **Repo icon** is the GitHub owner avatar (when the repo has a github.com
+  origin), falling back to a letter badge.
+- Each worktree gets a **situation-appropriate git icon**, colored by lifecycle:
+  `git-merge`/purple (merged), `git-pull-request*`/orange·gray·red (open/draft/
+  closed PR), `git-branch`/orange (pushed) or white (local-only).
+- The current worktree is highlighted (active row).
 - Click any other worktree to switch the current window to it (reuses the
   window — no new window).
 - **Refresh Worktrees** command (refresh icon in the view title bar) re-reads

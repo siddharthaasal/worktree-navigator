@@ -7,4 +7,6 @@ export type Repo = {
   name: string;
   /** Worktrees belonging to this repository. */
   worktrees: Worktree[];
+  /** GitHub owner avatar URL, when the repo has a github.com origin. */
+  avatarUrl?: string;
 };

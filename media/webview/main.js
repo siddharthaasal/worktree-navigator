@@ -86,9 +86,10 @@
     row.className = "worktree" + (wt.current ? " current" : "");
     row.title = tooltip(wt);
 
-    // Colored branch icon by lifecycle state.
-    const icon = codicon("git-branch");
-    icon.classList.add("wt-icon", "state-" + wt.state);
+    // Situation-appropriate git icon (branch / merge / pull-request variants),
+    // colored by tone.
+    const icon = codicon(wt.icon || "git-branch");
+    icon.classList.add("wt-icon", "tone-" + (wt.tone || "default"));
     row.appendChild(icon);
 
     const text = document.createElement("span");
@@ -139,6 +140,29 @@
     return row;
   }
 
+  /** Letter badge for a repo. */
+  function letterBadge(repo) {
+    const badge = document.createElement("span");
+    badge.className = "repo-badge";
+    badge.textContent = repo.name[0] || "?";
+    return badge;
+  }
+
+  /** Repo avatar from GitHub, falling back to the letter badge on error. */
+  function repoBadge(repo) {
+    if (!repo.avatarUrl) {
+      return letterBadge(repo);
+    }
+    const img = document.createElement("img");
+    img.className = "repo-badge repo-avatar";
+    img.src = repo.avatarUrl;
+    img.alt = "";
+    img.addEventListener("error", () => {
+      img.replaceWith(letterBadge(repo));
+    });
+    return img;
+  }
+
   function repoGroup(repo) {
     const group = document.createElement("div");
     const isCollapsed = collapsed.has(repo.root);
@@ -152,10 +176,7 @@
     twisty.classList.add("repo-twisty");
     header.appendChild(twisty);
 
-    const badge = document.createElement("span");
-    badge.className = "repo-badge";
-    badge.textContent = repo.name[0] || "?";
-    header.appendChild(badge);
+    header.appendChild(repoBadge(repo));
 
     const name = document.createElement("span");
     name.className = "repo-name";

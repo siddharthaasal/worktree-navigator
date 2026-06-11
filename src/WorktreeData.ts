@@ -5,8 +5,8 @@ import {
   getUncommittedDiffStat,
   resolveBaseBranch,
 } from "./git";
-import { GitHubService } from "./github";
-import { listBranches } from "./git";
+import { GitHubService, parseGitHubRemote } from "./github";
+import { getOriginUrl, listBranches } from "./git";
 import type { Repo } from "./models/Repo";
 import type { DiffStat } from "./models/Worktree";
 
@@ -32,6 +32,8 @@ export class WorktreeData implements vscode.Disposable {
   private statInFlight = new Set<string>();
   /** Per-repo branch state (merged + remote sets), keyed by repo root. */
   private repoStateCache = new Map<string, RepoState>();
+  /** Per-repo GitHub owner avatar URL (undefined cached too), by repo root. */
+  private avatarCache = new Map<string, string | undefined>();
   private github = new GitHubService();
   private prInFlight = new Set<string>();
   private fireTimer: ReturnType<typeof setTimeout> | undefined;
@@ -125,6 +127,16 @@ export class WorktreeData implements vscode.Disposable {
       wt.merged = !!wt.branch && state.merged.has(wt.branch);
       wt.pushed = !!wt.branch && state.remote.has(wt.branch);
     }
+
+    if (!this.avatarCache.has(repo.root)) {
+      const url = await getOriginUrl(repo.root);
+      const slug = url ? parseGitHubRemote(url) : undefined;
+      this.avatarCache.set(
+        repo.root,
+        slug ? `https://github.com/${slug.owner}.png?size=48` : undefined,
+      );
+    }
+    repo.avatarUrl = this.avatarCache.get(repo.root);
   }
 
   dispose(): void {

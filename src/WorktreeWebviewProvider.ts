@@ -5,11 +5,13 @@ import type { WorktreeData } from "./WorktreeData";
 import type { Repo } from "./models/Repo";
 import { worktreeLabel } from "./utils/worktreeLabel";
 import { branchState } from "./utils/branchState";
+import { worktreeIcon } from "./utils/worktreeIcon";
 
 /** Serializable view model posted to the webview. */
 interface RepoView {
   root: string;
   name: string;
+  avatarUrl?: string;
   worktrees: WorktreeView[];
 }
 interface WorktreeView {
@@ -21,8 +23,12 @@ interface WorktreeView {
   bare: boolean;
   /** True for the repository's main worktree (cannot be removed). */
   isMain: boolean;
-  /** Branch lifecycle: drives the icon color (purple/orange/white). */
+  /** Branch lifecycle, used in the hover tooltip. */
   state: "merged" | "pushed" | "local";
+  /** codicon id for the row icon (branch / merge / pull-request variants). */
+  icon: string;
+  /** Color tone for the icon. */
+  tone: string;
   /** Associated GitHub PR, when enabled and found. */
   pr?: { number: number; state: string; isDraft: boolean; url: string };
   insertions: number;
@@ -140,7 +146,8 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
       `style-src ${webview.cspSource}`,
       `font-src ${webview.cspSource}`,
       `script-src 'nonce-${nonce}'`,
-      `img-src ${webview.cspSource}`,
+      // Remote avatars from GitHub (github.com redirects to avatars.*).
+      `img-src ${webview.cspSource} https://github.com https://avatars.githubusercontent.com`,
     ].join("; ");
 
     return `<!DOCTYPE html>
@@ -169,6 +176,7 @@ function toRepoView(repo: Repo): RepoView {
   return {
     root: repo.root,
     name: repo.name,
+    avatarUrl: repo.avatarUrl,
     worktrees: repo.worktrees.map((wt) => ({
       path: wt.path,
       label: worktreeLabel(wt),
@@ -177,6 +185,8 @@ function toRepoView(repo: Repo): RepoView {
       bare: wt.bare,
       isMain: normalizePath(wt.path) === normalizePath(repo.root),
       state: branchState(wt),
+      icon: worktreeIcon(wt).icon,
+      tone: worktreeIcon(wt).tone,
       pr: wt.pr,
       insertions: wt.diffStat?.insertions ?? 0,
       deletions: wt.diffStat?.deletions ?? 0,

@@ -5,6 +5,7 @@ import type { BranchState, PullRequestInfo, Worktree } from "./models/Worktree";
 import { formatDiffStat } from "./utils/formatDiffStat";
 import { worktreeLabel as label } from "./utils/worktreeLabel";
 import { branchState } from "./utils/branchState";
+import { worktreeIcon, type IconTone } from "./utils/worktreeIcon";
 
 type Node = RepoItem | WorktreeItem | MessageItem;
 
@@ -47,10 +48,12 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Node> {
 export class RepoItem extends vscode.TreeItem {
   constructor(readonly repo: Repo) {
     super(repo.name, vscode.TreeItemCollapsibleState.Expanded);
-    this.iconPath = new vscode.ThemeIcon("repo");
+    // GitHub owner avatar when available, else a generic repo icon.
+    this.iconPath = repo.avatarUrl
+      ? vscode.Uri.parse(repo.avatarUrl)
+      : new vscode.ThemeIcon("repo");
     this.tooltip = repo.root;
     this.contextValue = "repo";
-    this.resourceUri = vscode.Uri.file(repo.root);
   }
 }
 
@@ -87,8 +90,10 @@ export class WorktreeItem extends vscode.TreeItem {
         : worktree.merged
           ? "worktree-merged"
           : "worktree";
-    // Colored branch icon by lifecycle state (purple/orange/white).
-    this.iconPath = new vscode.ThemeIcon("git-branch", stateColor(state));
+    // Situation-appropriate git icon (branch / merge / pull-request variants),
+    // colored by lifecycle tone.
+    const descriptor = worktreeIcon(worktree);
+    this.iconPath = new vscode.ThemeIcon(descriptor.icon, toneColor(descriptor.tone));
 
     if (!worktree.current) {
       this.command = {
@@ -108,15 +113,20 @@ function prLabel(pr: PullRequestInfo): string {
   return pr.state.toLowerCase();
 }
 
-/** Branch-icon color by lifecycle state. `local` uses the theme default. */
-function stateColor(state: BranchState): vscode.ThemeColor | undefined {
-  if (state === "merged") {
-    return new vscode.ThemeColor("charts.purple");
+/** Icon color by tone. `default` uses the theme foreground. */
+function toneColor(tone: IconTone): vscode.ThemeColor | undefined {
+  switch (tone) {
+    case "purple":
+      return new vscode.ThemeColor("charts.purple");
+    case "orange":
+      return new vscode.ThemeColor("charts.orange");
+    case "red":
+      return new vscode.ThemeColor("charts.red");
+    case "gray":
+      return new vscode.ThemeColor("descriptionForeground");
+    default:
+      return undefined;
   }
-  if (state === "pushed") {
-    return new vscode.ThemeColor("charts.orange");
-  }
-  return undefined; // local — default foreground
 }
 
 function stateLabel(state: BranchState): string {

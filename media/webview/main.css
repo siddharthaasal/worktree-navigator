@@ -58,6 +58,9 @@ body {
   background: var(--vscode-badge-background);
   color: var(--vscode-badge-foreground);
 }
+.repo-avatar {
+  object-fit: cover;
+}
 .repo-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -92,18 +95,24 @@ body {
   cursor: default;
 }
 
-/* Branch icon, colored by lifecycle state. */
+/* Git icon, colored by tone. */
 .wt-icon {
   flex: 0 0 auto;
   font-size: 14px !important;
 }
-.wt-icon.state-merged {
+.wt-icon.tone-purple {
   color: var(--vscode-charts-purple, #b180d7);
 }
-.wt-icon.state-pushed {
+.wt-icon.tone-orange {
   color: var(--vscode-charts-orange, #d18616);
 }
-/* state-local → inherits default foreground (white in dark themes). */
+.wt-icon.tone-red {
+  color: var(--vscode-charts-red, #f14c4c);
+}
+.wt-icon.tone-gray {
+  color: var(--vscode-descriptionForeground, #8c8c8c);
+}
+/* tone-default → inherits the theme foreground (white in dark themes). */
 
 .wt-text {
   flex: 1 1 auto;
