@@ -6,14 +6,15 @@ import {
   resolveBaseBranch,
 } from "./git";
 import { GitHubService, parseGitHubRemote } from "./github";
-import { getOriginUrl, listBranches } from "./git";
+import { getOriginUrl, getTrackedBranches, listBranches } from "./git";
 import type { Repo } from "./models/Repo";
 import type { DiffStat } from "./models/Worktree";
 
 /** Cached per-repo branch metadata used to flag worktree state. */
 interface RepoState {
   merged: Set<string>;
-  remote: Set<string>;
+  /** Branch names considered "pushed": on a remote, or with an upstream. */
+  pushed: Set<string>;
 }
 
 /**
@@ -113,19 +114,22 @@ export class WorktreeData implements vscode.Disposable {
   private async markBranchState(repo: Repo): Promise<void> {
     let state = this.repoStateCache.get(repo.root);
     if (!state) {
-      const [base, branches] = await Promise.all([
+      const [base, branches, tracked] = await Promise.all([
         resolveBaseBranch(repo.root),
         listBranches(repo.root),
+        getTrackedBranches(repo.root),
       ]);
       const merged = base
         ? await getMergedBranches(repo.root, base)
         : new Set<string>();
-      state = { merged, remote: new Set(branches.remote) };
+      // "Pushed" = has a remote-tracking ref OR a configured upstream.
+      const pushed = new Set<string>([...branches.remote, ...tracked]);
+      state = { merged, pushed };
       this.repoStateCache.set(repo.root, state);
     }
     for (const wt of repo.worktrees) {
       wt.merged = !!wt.branch && state.merged.has(wt.branch);
-      wt.pushed = !!wt.branch && state.remote.has(wt.branch);
+      wt.pushed = !!wt.branch && state.pushed.has(wt.branch);
     }
 
     if (!this.avatarCache.has(repo.root)) {

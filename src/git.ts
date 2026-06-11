@@ -171,6 +171,25 @@ export async function listBranches(repoRoot: string): Promise<BranchList> {
   return { local, remote: [...new Set(remote)] };
 }
 
+/** Local branch names that have an upstream configured (i.e. are tracked). */
+export async function getTrackedBranches(
+  repoRoot: string,
+): Promise<Set<string>> {
+  const out = await git(repoRoot, [
+    "for-each-ref",
+    "--format=%(refname:short)%00%(upstream)",
+    "refs/heads",
+  ]);
+  const tracked = new Set<string>();
+  for (const line of lines(out)) {
+    const [name, upstream] = line.split("\0");
+    if (name && upstream) {
+      tracked.add(name);
+    }
+  }
+  return tracked;
+}
+
 export interface AddWorktreeOptions {
   /** Absolute path for the new worktree directory. */
   path: string;

@@ -125,7 +125,15 @@ export function activate(context: vscode.ExtensionContext): void {
         syncViewModeContext();
       }
       if (e.affectsConfiguration("worktreeNavigator.showPullRequests")) {
-        data.refresh();
+        const enabled = vscode.workspace
+          .getConfiguration("worktreeNavigator")
+          .get<boolean>("showPullRequests", false);
+        if (enabled) {
+          // Prompt sign-in now so PR data actually loads (then refreshes).
+          void signInGitHub(data);
+        } else {
+          data.refresh();
+        }
       }
     }),
   );
