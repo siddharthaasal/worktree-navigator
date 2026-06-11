@@ -1,0 +1,215 @@
+{
+  "name": "worktree-navigator",
+  "displayName": "Worktree Navigator",
+  "description": "Visualize and switch Git worktrees from a sidebar.",
+  "version": "0.0.1",
+  "publisher": "worktree-navigator",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "worktreeNavigator",
+          "title": "Worktrees",
+          "icon": "media/worktrees.svg"
+        }
+      ]
+    },
+    "views": {
+      "worktreeNavigator": [
+        {
+          "id": "worktreeNavigator.pane",
+          "type": "webview",
+          "name": "Worktrees",
+          "icon": "media/worktrees.svg",
+          "when": "worktreeNavigator.viewMode == 'pane'"
+        },
+        {
+          "id": "worktreeNavigator.worktrees",
+          "name": "Worktrees",
+          "icon": "media/worktrees.svg",
+          "when": "worktreeNavigator.viewMode == 'tree'"
+        },
+        {
+          "id": "worktreeNavigator.changes",
+          "name": "Changes",
+          "icon": "media/worktrees.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "worktreeNavigator.refresh",
+        "title": "Refresh Worktrees",
+        "category": "Worktrees",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "worktreeNavigator.switch",
+        "title": "Switch to Worktree",
+        "category": "Worktrees"
+      },
+      {
+        "command": "worktreeNavigator.switchMode",
+        "title": "Switch View (Tree / Pane)",
+        "category": "Worktrees",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "worktreeNavigator.togglePane",
+        "title": "Toggle Worktrees Pane",
+        "category": "Worktrees"
+      },
+      {
+        "command": "worktreeNavigator.createWorktree",
+        "title": "Create Worktree",
+        "category": "Worktrees",
+        "icon": "$(add)"
+      },
+      {
+        "command": "worktreeNavigator.removeWorktree",
+        "title": "Remove Worktree",
+        "category": "Worktrees",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "worktreeNavigator.archiveWorktree",
+        "title": "Archive Worktree (remove + delete branch)",
+        "category": "Worktrees",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "worktreeNavigator.signInGitHub",
+        "title": "Sign in to GitHub (for PR status)",
+        "category": "Worktrees",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "worktreeNavigator.openChange",
+        "title": "Open Changes",
+        "category": "Worktrees"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "worktreeNavigator.togglePane",
+        "key": "ctrl+alt+w",
+        "mac": "cmd+alt+w"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "worktreeNavigator.createWorktree",
+          "when": "view == worktreeNavigator.worktrees || view == worktreeNavigator.pane",
+          "group": "navigation@0"
+        },
+        {
+          "command": "worktreeNavigator.refresh",
+          "when": "view == worktreeNavigator.worktrees || view == worktreeNavigator.pane",
+          "group": "navigation@1"
+        },
+        {
+          "command": "worktreeNavigator.switchMode",
+          "when": "view == worktreeNavigator.worktrees || view == worktreeNavigator.pane",
+          "group": "navigation@2"
+        },
+        {
+          "command": "worktreeNavigator.signInGitHub",
+          "when": "(view == worktreeNavigator.worktrees || view == worktreeNavigator.pane) && config.worktreeNavigator.showPullRequests",
+          "group": "navigation@3"
+        },
+        {
+          "command": "worktreeNavigator.refresh",
+          "when": "view == worktreeNavigator.changes",
+          "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "worktreeNavigator.createWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem == repo",
+          "group": "inline"
+        },
+        {
+          "command": "worktreeNavigator.archiveWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem == worktree-merged",
+          "group": "inline@1"
+        },
+        {
+          "command": "worktreeNavigator.removeWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem =~ /^worktree(-merged)?$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "worktreeNavigator.removeWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem =~ /^worktree(-merged)?$/"
+        },
+        {
+          "command": "worktreeNavigator.archiveWorktree",
+          "when": "view == worktreeNavigator.worktrees && viewItem == worktree-merged"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Worktree Navigator",
+      "properties": {
+        "worktreeNavigator.viewMode": {
+          "type": "string",
+          "enum": [
+            "pane",
+            "tree"
+          ],
+          "enumDescriptions": [
+            "Rich webview pane (highlighted active row, colored diff pills).",
+            "Lightweight native tree list."
+          ],
+          "default": "pane",
+          "description": "Which Worktrees view to show in the sidebar."
+        },
+        "worktreeNavigator.worktreesPath": {
+          "type": "string",
+          "default": "",
+          "description": "Base directory for new worktrees. When empty, new worktrees are created next to the repository (in its parent directory)."
+        },
+        "worktreeNavigator.showPullRequests": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show GitHub pull-request status on worktrees (open = orange, merged = purple, etc.). Requires signing in to GitHub; uses VS Code's built-in GitHub authentication."
+        },
+        "worktreeNavigator.showDiffStat": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show per-worktree uncommitted line counts (e.g. +12 -3) next to each worktree."
+        },
+        "worktreeNavigator.showSubtitle": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the worktree folder name as a dimmed subtitle under the branch name (pane only)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "watch": "npm run compile -- --sourcemap --watch",
+    "package": "npm run compile -- --minify",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/codicons": "^0.0.45",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}
