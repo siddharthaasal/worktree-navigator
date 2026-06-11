@@ -3,6 +3,6 @@ src/**
 node_modules/**
 .gitignore
 tsconfig.json
-plan-v0.md
+plan-*.md
 **/*.map
 **/*.ts
