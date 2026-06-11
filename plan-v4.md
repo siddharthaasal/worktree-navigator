@@ -123,13 +123,18 @@ the built-in Source Control still does those). No cross-worktree comparison.
 
 ---
 
-## Open Questions (need answers to finalize)
+## Decisions (resolved)
 
-- **Q1 — Baseline:** A (branch vs base, PR-style) *[recommended]*, B (working
-  tree vs HEAD), or C (vs upstream)?
-- **Q2 — Focus model:** clicking a worktree **switches and focuses** *[default,
-  matches "switch then see its diff"]*, or **focus-only preview** (see a
-  worktree's changes without switching the workspace), or **both** (click =
-  switch+focus, a separate "Show changes" action = preview)?
-- **Q3 — Placement:** a Changes view **below the worktree list** in our sidebar
-  *[default]*, or a separate panel?
+- **Q1 — Baseline:** ✅ **Branch vs upstream** (`origin/<branch>` → working
+  tree): unpushed commits + uncommitted edits. **Fallback** when the branch has
+  no upstream (local-only): merge-base with the base branch, else `HEAD`.
+- **Q2 — Focus model:** ✅ **Switch + focus** — clicking a worktree switches the
+  workspace to it and focuses the Changes view on it.
+- **Q3 — Placement:** ✅ Changes view **below the worktree list** in the sidebar.
+
+### Implications of "branch vs upstream"
+- Compare ref per worktree: `@{upstream}` if set; else `merge-base(base, HEAD)`;
+  else `HEAD`. The same ref feeds both the file list (`git diff --name-status
+  <ref>`) and each diff's left side (`git show <ref>:<path>`).
+- Local-only worktrees (no upstream) effectively show their working-tree +
+  committed changes vs base — the closest meaningful diff.
