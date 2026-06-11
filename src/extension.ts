@@ -7,7 +7,7 @@ import { ChangesProvider } from "./ChangesProvider";
 import { FocusManager } from "./focus";
 import { BaseContentProvider, DIFF_SCHEME, baseUri, emptyUri } from "./diffContent";
 import { getGitAPI } from "./repos";
-import { switchToWorktree } from "./switch";
+import { switchToWorktree, switchScoped } from "./switch";
 import { createWorktree, removeWorktreeAction } from "./actions";
 import type { ChangedFile } from "./git";
 
@@ -215,7 +215,15 @@ async function focusAndSwitch(
     }
   }
   focus.set({ worktreePath: targetPath, label });
-  await switchToWorktree(targetPath);
+
+  const scope = vscode.workspace
+    .getConfiguration("worktreeNavigator")
+    .get<boolean>("scopeSourceControl", true);
+  // Scope the workspace to one worktree per repo so Source Control isn't
+  // cluttered by every worktree; fall back to the in-place folder swap.
+  if (!scope || !switchScoped(repos, targetPath)) {
+    await switchToWorktree(targetPath);
+  }
 }
 
 /** Open the diff editor for a changed file (base ref ↔ working tree). */

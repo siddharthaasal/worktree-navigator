@@ -199,6 +199,11 @@
           "type": "boolean",
           "default": false,
           "description": "Show the worktree folder name as a dimmed subtitle under the branch name (pane only)."
+        },
+        "worktreeNavigator.scopeSourceControl": {
+          "type": "boolean",
+          "default": true,
+          "description": "When switching, scope the workspace to one worktree per repository (the active worktree), so the built-in Source Control shows only those — not every worktree under an opened parent folder. Disable to keep the workspace folders unchanged on switch."
         }
       }
     }

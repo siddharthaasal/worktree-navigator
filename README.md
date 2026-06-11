@@ -72,6 +72,9 @@ The default view is minimal — branch name, colored icon, and hover actions
 - `worktreeNavigator.showPullRequests` — GitHub PR status (prompts sign-in).
 - `worktreeNavigator.viewMode` — `pane` (default) or `tree`.
 - `worktreeNavigator.worktreesPath` — base directory for new worktrees.
+- `worktreeNavigator.scopeSourceControl` (default `true`) — on switch, scope the
+  workspace to one worktree per repo so the built-in Source Control shows only
+  the active worktrees, not every worktree under an opened parent folder.
 
 See [plan-v0.md](plan-v0.md) (MVP), [plan-v1.md](plan-v1.md) (multi-repo +
 diff stats), [plan-v2.md](plan-v2.md) (webview pane + modes), and
