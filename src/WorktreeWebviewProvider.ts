@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { randomBytes } from "node:crypto";
 import type { WorktreeData } from "./WorktreeData";
+import type { FocusManager } from "./focus";
 import type { Repo } from "./models/Repo";
 import { worktreeLabel } from "./utils/worktreeLabel";
 import { branchState } from "./utils/branchState";
@@ -19,7 +20,10 @@ interface WorktreeView {
   label: string;
   /** Worktree folder basename, shown as a dimmed subtitle when it differs. */
   dir: string;
-  current: boolean;
+  /** True when this worktree is a root folder in the workspace. */
+  open: boolean;
+  /** True when this is the worktree the user last switched to. */
+  focused: boolean;
   bare: boolean;
   /** True for the repository's main worktree (cannot be removed). */
   isMain: boolean;
@@ -58,9 +62,11 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly data: WorktreeData,
+    private readonly focus: FocusManager,
     private readonly onSwitch: (path: string) => void | Promise<void>,
   ) {
     this.data.onDidChange(() => void this.render());
+    this.focus.onDidChange(() => void this.render());
   }
 
   /** Whether the pane is currently visible in the sidebar. */
@@ -130,9 +136,10 @@ export class WorktreeWebviewProvider implements vscode.WebviewViewProvider {
     const showSubtitle = vscode.workspace
       .getConfiguration("worktreeNavigator")
       .get<boolean>("showSubtitle", false);
+    const focusedPath = this.focus.focus?.worktreePath;
     await this.view.webview.postMessage({
       type: "render",
-      repos: repos.map(toRepoView),
+      repos: repos.map((repo) => toRepoView(repo, focusedPath)),
       prefs: { showSubtitle },
     });
   }
@@ -176,7 +183,14 @@ function normalizePath(p: string): string {
   return p.replace(/[\\/]+$/, "");
 }
 
-function toRepoView(repo: Repo): RepoView {
+function pathsEqual(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) {
+    return false;
+  }
+  return normalizePath(a) === normalizePath(b);
+}
+
+function toRepoView(repo: Repo, focusedPath: string | undefined): RepoView {
   return {
     root: repo.root,
     name: repo.name,
@@ -185,7 +199,8 @@ function toRepoView(repo: Repo): RepoView {
       path: wt.path,
       label: worktreeLabel(wt),
       dir: path.basename(wt.path),
-      current: wt.current,
+      open: wt.current,
+      focused: pathsEqual(wt.path, focusedPath),
       bare: wt.bare,
       isMain: normalizePath(wt.path) === normalizePath(repo.root),
       state: branchState(wt),

@@ -16,8 +16,8 @@ worktrees from a sidebar.
   `git-merge`/purple (merged), `git-pull-request*`/orange·gray·red (open/draft/
   closed PR), `git-branch`/orange (pushed) or white (local-only).
 - The current worktree is highlighted (active row).
-- Click any other worktree to switch the current window to it (reuses the
-  window — no new window).
+- Click any other worktree to add it to the workspace (if needed) and reveal it
+  in the Explorer — other workspace folders stay open.
 - **Refresh Worktrees** command (refresh icon in the view title bar) re-reads
   everything; the tree also auto-refreshes when repos open/close or worktree
   metadata changes.
@@ -72,9 +72,6 @@ The default view is minimal — branch name, colored icon, and hover actions
 - `worktreeNavigator.showPullRequests` — GitHub PR status (prompts sign-in).
 - `worktreeNavigator.viewMode` — `pane` (default) or `tree`.
 - `worktreeNavigator.worktreesPath` — base directory for new worktrees.
-- `worktreeNavigator.scopeSourceControl` (default `true`) — on switch, scope the
-  workspace to one worktree per repo so the built-in Source Control shows only
-  the active worktrees, not every worktree under an opened parent folder.
 
 See [plan-v0.md](plan-v0.md) (MVP), [plan-v1.md](plan-v1.md) (multi-repo +
 diff stats), [plan-v2.md](plan-v2.md) (webview pane + modes), and
@@ -101,7 +98,7 @@ src/
 ├── WorktreeProvider.ts           tree view — maps WorktreeData to tree items
 ├── WorktreeWebviewProvider.ts    pane view — webview shell + message passing
 ├── actions.ts                    create / remove / archive worktree flows
-├── switch.ts                     switch-to-worktree (in-place folder swap)
+├── switch.ts                     switch-to-worktree (add to workspace + reveal)
 ├── focus.ts                      tracks the worktree the Changes view is scoped to
 ├── ChangesProvider.ts            Changes view — folder-grouped changed files
 ├── diffContent.ts                read-only base side of the diff (git show <ref>:<path>)

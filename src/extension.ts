@@ -7,7 +7,7 @@ import { ChangesProvider } from "./ChangesProvider";
 import { FocusManager } from "./focus";
 import { BaseContentProvider, DIFF_SCHEME, baseUri, emptyUri } from "./diffContent";
 import { getGitAPI } from "./repos";
-import { switchToWorktree, switchScoped } from "./switch";
+import { switchToWorktree } from "./switch";
 import { createWorktree, removeWorktreeAction } from "./actions";
 import type { ChangedFile } from "./git";
 
@@ -20,10 +20,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const focus = new FocusManager();
   context.subscriptions.push(focus);
 
-  const treeProvider = new WorktreeProvider(data);
+  const treeProvider = new WorktreeProvider(data, focus);
   const webviewProvider = new WorktreeWebviewProvider(
     context.extensionUri,
     data,
+    focus,
     (p) => focusAndSwitch(data, focus, p),
   );
   const changesProvider = new ChangesProvider(focus);
@@ -71,7 +72,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       "worktreeNavigator.switch",
       (item?: WorktreeItem) => {
-        if (item && !item.worktree.current) {
+        if (!item) {
+          return;
+        }
+        const focused = focus.focus?.worktreePath;
+        const norm = (p: string) => p.replace(/[\\/]+$/, "");
+        if (!focused || norm(focused) !== norm(item.worktree.path)) {
           void focusAndSwitch(data, focus, item.worktree.path);
         }
       },
@@ -198,7 +204,7 @@ async function signInGitHub(data: WorktreeData): Promise<void> {
   }
 }
 
-/** Focus the Changes view on a worktree, then switch the workspace to it. */
+/** Focus the Changes view on a worktree, then add/reveal it in the workspace. */
 async function focusAndSwitch(
   data: WorktreeData,
   focus: FocusManager,
@@ -215,15 +221,7 @@ async function focusAndSwitch(
     }
   }
   focus.set({ worktreePath: targetPath, label });
-
-  const scope = vscode.workspace
-    .getConfiguration("worktreeNavigator")
-    .get<boolean>("scopeSourceControl", true);
-  // Scope the workspace to one worktree per repo so Source Control isn't
-  // cluttered by every worktree; fall back to the in-place folder swap.
-  if (!scope || !switchScoped(repos, targetPath)) {
-    await switchToWorktree(targetPath);
-  }
+  await switchToWorktree(targetPath);
 }
 
 /** Open the diff editor for a changed file (base ref ↔ working tree). */

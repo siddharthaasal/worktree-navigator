@@ -86,7 +86,7 @@
 
   function worktreeRow(wt) {
     const row = document.createElement("div");
-    row.className = "worktree" + (wt.current ? " current" : "");
+    row.className = "worktree" + (wt.focused ? " current" : "");
     row.title = tooltip(wt);
 
     // Situation-appropriate git icon (branch / merge / pull-request variants),
@@ -120,7 +120,7 @@
         }),
       );
     }
-    if (!wt.current && !wt.isMain) {
+    if (!wt.open && !wt.isMain) {
       if (wt.state === "merged") {
         row.appendChild(
           iconButton("archive", "Archive (remove + delete branch)", () => {
@@ -135,7 +135,7 @@
       );
     }
 
-    if (!wt.current) {
+    if (!wt.focused) {
       row.addEventListener("click", () => {
         vscode.postMessage({ type: "switch", path: wt.path });
       });
