@@ -4,6 +4,11 @@
   "description": "Visualize and switch Git worktrees from a sidebar.",
   "version": "0.0.1",
   "publisher": "worktree-navigator",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/siddharthaasal/worktree-navigator.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },

@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { WorktreeData } from "./WorktreeData";
+import type { FocusManager } from "./focus";
 import type { Repo } from "./models/Repo";
 import type { BranchState, PullRequestInfo, Worktree } from "./models/Worktree";
 import { formatDiffStat } from "./utils/formatDiffStat";
@@ -20,8 +21,12 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Node> {
   >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  constructor(private readonly data: WorktreeData) {
+  constructor(
+    private readonly data: WorktreeData,
+    private readonly focus: FocusManager,
+  ) {
     this.data.onDidChange(() => this._onDidChangeTreeData.fire());
+    this.focus.onDidChange(() => this._onDidChangeTreeData.fire());
   }
 
   getTreeItem(element: Node): vscode.TreeItem {
@@ -30,7 +35,9 @@ export class WorktreeProvider implements vscode.TreeDataProvider<Node> {
 
   async getChildren(element?: Node): Promise<Node[]> {
     if (element instanceof RepoItem) {
-      return element.repo.worktrees.map((wt) => new WorktreeItem(wt));
+      return element.repo.worktrees.map(
+        (wt) => new WorktreeItem(wt, this.focus.focus?.worktreePath),
+      );
     }
     if (element) {
       return []; // worktree / message leaves have no children
@@ -57,20 +64,24 @@ export class RepoItem extends vscode.TreeItem {
   }
 }
 
-/** Worktree leaf node — click to switch (unless it's the current one). */
+/** Worktree leaf node — click to switch (unless it's already focused). */
 export class WorktreeItem extends vscode.TreeItem {
-  constructor(readonly worktree: Worktree) {
+  constructor(
+    readonly worktree: Worktree,
+    focusedPath: string | undefined,
+  ) {
     super(label(worktree), vscode.TreeItemCollapsibleState.None);
 
     const isMain =
       worktree.path.replace(/[\\/]+$/, "") ===
       worktree.repoRoot.replace(/[\\/]+$/, "");
+    const focused = pathsEqual(worktree.path, focusedPath);
     const stat = formatDiffStat(worktree.diffStat);
     const pr = worktree.pr;
     const state = branchState(worktree);
 
     // Decluttered: only the diff stat (and a "current" hint) on the row.
-    this.description = [worktree.current ? "current" : "", stat]
+    this.description = [focused ? "current" : "", stat]
       .filter(Boolean)
       .join(" · ");
     // Details live in the tooltip on hover.
@@ -83,7 +94,7 @@ export class WorktreeItem extends vscode.TreeItem {
       .filter(Boolean)
       .join("\n");
     this.resourceUri = vscode.Uri.file(worktree.path);
-    this.contextValue = worktree.current
+    this.contextValue = focused
       ? "worktree-current"
       : isMain
         ? "worktree-main"
@@ -95,7 +106,7 @@ export class WorktreeItem extends vscode.TreeItem {
     const descriptor = worktreeIcon(worktree);
     this.iconPath = new vscode.ThemeIcon(descriptor.icon, toneColor(descriptor.tone));
 
-    if (!worktree.current) {
+    if (!focused) {
       this.command = {
         command: "worktreeNavigator.switch",
         title: "Switch to Worktree",
@@ -135,6 +146,14 @@ function stateLabel(state: BranchState): string {
     : state === "pushed"
       ? "pushed (in progress)"
       : "local only";
+}
+
+function pathsEqual(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) {
+    return false;
+  }
+  const norm = (p: string) => p.replace(/[\\/]+$/, "");
+  return norm(a) === norm(b);
 }
 
 /** Placeholder node (e.g. no repositories). */

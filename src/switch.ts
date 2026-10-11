@@ -1,45 +1,42 @@
 import * as vscode from "vscode";
-import { getCommonDir } from "./git";
 
 /**
- * Switch to a worktree by swapping the matching repository's folder in the
- * workspace, in place — keeping every other repo's folder untouched and
- * avoiding a full window reload.
+ * Switch to a worktree by adding it to the workspace (if not already open) and
+ * revealing it in the Explorer — keeping every other workspace folder intact.
  *
- * Matching is by shared git common-dir: the workspace folder that belongs to
- * the same repository as the target is replaced with the target path. If no
- * folder belongs to that repo (e.g. the repo is nested under an opened parent
- * folder), the worktree is added as an additional folder instead of wiping the
- * workspace. With no folders open at all, we fall back to opening it.
+ * If the worktree is already a root folder, or nested under an open folder, we
+ * just reveal it. With no folders open at all, we fall back to opening it.
  */
 export async function switchToWorktree(targetPath: string): Promise<void> {
-  const folders = vscode.workspace.workspaceFolders ?? [];
   const targetUri = vscode.Uri.file(targetPath);
+  const folders = vscode.workspace.workspaceFolders ?? [];
 
   if (folders.length === 0) {
     await vscode.commands.executeCommand("vscode.openFolder", targetUri, false);
     return;
   }
 
-  const targetCommon = await getCommonDir(targetPath);
-  if (targetCommon) {
-    const commons = await Promise.all(
-      folders.map((f) => getCommonDir(f.uri.fsPath)),
-    );
-    const idx = commons.findIndex(
-      (c) => c && normalize(c) === normalize(targetCommon),
-    );
-    if (idx !== -1) {
-      if (normalize(folders[idx].uri.fsPath) === normalize(targetPath)) {
-        return; // already open at this worktree
-      }
-      vscode.workspace.updateWorkspaceFolders(idx, 1, { uri: targetUri });
-      return;
-    }
+  const targetNorm = normalize(targetPath);
+  const isRootFolder = folders.some(
+    (f) => normalize(f.uri.fsPath) === targetNorm,
+  );
+  if (isRootFolder || vscode.workspace.getWorkspaceFolder(targetUri)) {
+    await focusFolder(targetUri);
+    return;
   }
 
-  // No folder belongs to this repo — add the worktree without dropping others.
-  vscode.workspace.updateWorkspaceFolders(folders.length, 0, { uri: targetUri });
+  const added = vscode.workspace.updateWorkspaceFolders(
+    folders.length,
+    0,
+    { uri: targetUri },
+  );
+  if (added) {
+    await focusFolder(targetUri);
+  }
+}
+
+async function focusFolder(uri: vscode.Uri): Promise<void> {
+  await vscode.commands.executeCommand("revealInExplorer", uri);
 }
 
 function normalize(p: string): string {
